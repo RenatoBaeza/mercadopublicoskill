@@ -63,7 +63,7 @@ PRIVATE_CODES = {"E2", "CO", "B2", "H2", "I2", "O2"}
 
 
 def download(url, dest, retries=3):
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (mp-download skill)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (mp-descargar skill)"})
     for attempt in range(1, retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=180) as resp, open(dest, "wb") as f:

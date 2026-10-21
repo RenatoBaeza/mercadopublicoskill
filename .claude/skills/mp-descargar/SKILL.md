@@ -1,5 +1,5 @@
 ---
-name: mp-download
+name: mp-descargar
 description: Download the current list of published tenders (Licitaciones Publicadas) from Mercado Público / ChileCompra, decompress the zip and save it as data/licitaciones.xlsx and data/licitaciones.json. Use when the user wants fresh Chilean public tender data, or before ranking tenders if the data is missing or older than today.
 ---
 
@@ -14,7 +14,7 @@ ChileCompra regenerates every morning. It contains `Licitacion_Publicada.xlsx` a
 From the project root:
 
 ```
-python .claude/skills/mp-download/scripts/download.py --out data
+python .claude/skills/mp-descargar/scripts/download.py --out data
 ```
 
 (`python3` on macOS/Linux. Needs only the standard library; `openpyxl` is used only

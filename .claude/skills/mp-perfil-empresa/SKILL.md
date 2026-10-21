@@ -1,11 +1,11 @@
 ---
-name: mp-company-profile
+name: mp-perfil-empresa
 description: Interview an entrepreneur about their company's skills, products, regions and capacity, and save a company profile (data/company_profile.json) used to match Chilean public tenders from Mercado Público. Use when the user wants to set up or update their company profile for licitaciones / ChileCompra, or before ranking tenders.
 ---
 
 # Company profile for Mercado Público tenders
 
-Goal: produce `data/company_profile.json`, which `mp-rank` uses to score tenders.
+Goal: produce `data/company_profile.json`, which `mp-priorizar` uses to score tenders.
 Talk to the user in their language (Spanish or English). Keep the interview short:
 group questions, use `AskUserQuestion` for multiple-choice ones, and never ask
 something you can infer from earlier answers.
@@ -58,11 +58,11 @@ everything (`servicio`, `adquisición`, `suministro`, `compra`).
 
 ## 4. Suggest UNSPSC codes from real data (if the data is downloaded)
 
-If `data/licitaciones.json` exists (otherwise run the `mp-download` skill first, or skip
+If `data/licitaciones.json` exists (otherwise run the `mp-descargar` skill first, or skip
 this step), run:
 
 ```
-python .claude/skills/mp-rank/scripts/suggest_codes.py --data data/licitaciones.json "<kw1>" "<kw2>" ...
+python .claude/skills/mp-priorizar/scripts/suggest_codes.py --data data/licitaciones.json "<kw1>" "<kw2>" ...
 ```
 
 The output lists the Código ONU codes and category paths of items that match the
@@ -97,4 +97,4 @@ Write `data/company_profile.json` (create `data/` if needed) following
 | `dias_minimos_preparacion` | Tenders closing sooner than this are dropped |
 | `incluir_privadas` | Include invitation-only tenders |
 
-Finish with a 5-line summary of the profile and point to the next step (`mp-rank`).
+Finish with a 5-line summary of the profile and point to the next step (`mp-priorizar`).

@@ -1,24 +1,27 @@
 ---
-name: mp-rank
+name: mp-priorizar
 description: Score and rank downloaded Mercado Público tenders against the company profile and suggest the top 100 to apply for, with the reasons for each score, as xlsx/csv/json/markdown and an interactive HTML page. Use when the user asks which Chilean public tenders (licitaciones) their company should apply to, or wants the ranking refreshed.
 ---
 
 # Rank tenders for the company
 
-Requires `data/company_profile.json` (from `mp-company-profile`) and
-`data/licitaciones.json` (from `mp-download`). If either is missing, run that skill
+Requires `data/company_profile.json` (from `mp-perfil-empresa`) and
+`data/licitaciones.json` (from `mp-descargar`). If either is missing, run that skill
 first. If the data's `descargado` date is not today, offer to refresh it.
 
 ## Run
 
 ```
-python .claude/skills/mp-rank/scripts/rank.py --profile data/company_profile.json --data data/licitaciones.json --top 100 --out data/ranking_top100
+python .claude/skills/mp-priorizar/scripts/rank.py --profile data/company_profile.json --data data/licitaciones.json --top 100 --out data/ranking_top100
 ```
 
 Outputs `data/ranking_top100.xlsx` (needs `openpyxl`), `.csv`, `.json`, `.md` and `.html`.
 The `.html` is a self-contained page built from `scripts/ranking_template.html`: open it in a
-browser to search, filter by region / size / score / days to close, sort columns, expand a row
-for its score breakdown and reasons, and star a shortlist (kept in the browser's local storage).
+browser to search, filter by region / size / score / days to close, and sort columns. Each row
+shows what the buyer wants; expanding it shows the job summary (full description, deliverables
+with quantities, approximate budget from the size bracket, steps to submit before the deadline).
+Rows can be starred into a shortlist (kept in the browser's local storage). The JSON also
+carries `descripcion` and `entregables` for each ranked tender.
 The console prints the counts, the reasons tenders were dropped, and the top 10.
 
 ## How the score works (0–100)

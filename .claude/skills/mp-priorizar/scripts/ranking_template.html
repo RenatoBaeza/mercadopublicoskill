@@ -8,7 +8,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: one working column. A summary strip, a sticky filter bar, then the ranked list as a
-   ledger of rows (cards on phones). Each row carries a stacked score bar split by the five scoring parts. */
+   ledger of rows (cards on phones). Each row shows what the buyer wants; expanding it shows the
+   full brief, the deliverables and the steps to submit an offer. */
 :root {
   --bg: #f6f7f9;
   --surface: #ffffff;
@@ -70,10 +71,6 @@ details.drops summary { cursor: pointer; color: var(--muted); }
 .drop-list span { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
 .drop-list b { font-variant-numeric: tabular-nums; }
 
-.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); align-items: center; }
-.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
-.legend .max { color: var(--muted); font-variant-numeric: tabular-nums; }
-
 .bar-wrap { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
 .filters { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: end; padding-block: 12px; }
 .field { display: grid; gap: 4px; min-width: 0; }
@@ -116,6 +113,9 @@ tbody tr.row.open td { background: var(--accent-wash); border-bottom-color: tran
 .code { font: 500 12.5px var(--f-mono); white-space: nowrap; }
 .name { font-weight: 600; min-width: 260px; }
 .org { color: var(--ink-2); font-size: 13px; font-weight: 400; margin-top: 2px; }
+.gist { color: var(--ink-2); font-size: 13px; font-weight: 400; margin-top: 6px; max-width: 72ch;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+tr.row.open .gist { display: none; }
 .region { color: var(--ink-2); font-size: 13px; min-width: 120px; }
 .chip { display: inline-block; font: 500 12px/1 var(--f-mono); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--line-2); color: var(--ink-2); }
 .chip.ok { border-color: var(--good); color: var(--good); }
@@ -127,31 +127,26 @@ tbody tr.row.open td { background: var(--accent-wash); border-bottom-color: tran
 .pill.warn { color: var(--warn); background: var(--warn-wash); }
 .pill.good { color: var(--good); background: var(--good-wash); }
 
-.score { min-width: 150px; }
-.score-top { display: flex; align-items: baseline; gap: 8px; }
-.score-top b { font: 700 18px/1 var(--f-display); font-variant-numeric: tabular-nums; }
-.score-top span { color: var(--muted); font-size: 12px; }
-.sbar { display: flex; gap: 2px; height: 8px; margin-top: 6px; width: 140px; background: var(--line); border-radius: 4px; overflow: hidden; }
-.sbar i { display: block; height: 100%; }
-.sbar i:first-child { border-radius: 4px 0 0 4px; }
-.c1 { background: var(--s1); } .c2 { background: var(--s2); } .c3 { background: var(--s3); } .c4 { background: var(--s4); } .c5 { background: var(--s5); }
+.score { font: 700 15px/1.4 var(--f-display); font-variant-numeric: tabular-nums; color: var(--ink-2); }
 
 .star { all: unset; cursor: pointer; font-size: 18px; line-height: 1; color: var(--line-2); padding: 2px 4px; border-radius: 4px; }
 .star[aria-pressed="true"] { color: var(--star); }
 .star:focus-visible { outline: 2px solid var(--accent); }
 
 tr.detail td { background: var(--accent-wash); padding: 0 10px 16px; }
-.detail-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; padding-left: 4ch; }
-.detail h3 { font: 700 12px/1 var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 8px 0 8px; }
-.reasons { margin: 0; padding-left: 18px; color: var(--ink-2); }
-.reasons li + li { margin-top: 3px; }
-.parts { display: grid; gap: 6px; font-size: 13px; }
-.part { display: grid; grid-template-columns: 92px 1fr 64px; gap: 8px; align-items: center; }
-.part .track { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
-.part .track i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
-.part .v { font-variant-numeric: tabular-nums; text-align: right; color: var(--ink-2); }
-.meta { font-size: 13px; color: var(--ink-2); margin-top: 10px; }
-.meta a { font-weight: 600; }
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 28px; padding-left: 4ch; }
+.detail h3 { font: 700 12px/1 var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; }
+.brief { margin: 0; max-width: 75ch; }
+.deliv { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.deliv li { display: flex; gap: 12px; justify-content: space-between; border-bottom: 1px dashed var(--line-2); padding-bottom: 4px; }
+.deliv .qty { font: 500 12.5px var(--f-mono); color: var(--ink-2); white-space: nowrap; }
+.deliv li.more { color: var(--muted); border: 0; }
+.steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.steps a { font-weight: 600; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 13.5px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }
+.why { font-size: 13px; color: var(--muted); margin-top: 12px; }
 
 .empty { padding: 40px 16px; text-align: center; color: var(--muted); }
 footer { color: var(--muted); font-size: 13px; padding-block: 0 40px; }
@@ -170,7 +165,7 @@ footer p { max-width: 70ch; margin: 0; }
   tbody tr.row td.rank { grid-column: 1; grid-row: 1; }
   tbody tr.row td.name { grid-column: 2; grid-row: 1; }
   tbody tr.row td.starc { grid-column: 3; grid-row: 1; }
-  tbody tr.row td.score { grid-column: 2 / 4; }
+  tbody tr.row td.score { display: none; }
   tbody tr.row td.codec, tbody tr.row td.region, tbody tr.row td.sizec, tbody tr.row td.close { grid-column: 2 / 4; }
   .name { min-width: 0; }
   tr.detail { display: block; }
@@ -189,14 +184,13 @@ footer p { max-width: 70ch; margin: 0; }
   <p class="sub" id="source"></p>
   <div class="stats" id="stats"></div>
   <details class="drops"><summary>Por qué se descartaron las demás</summary><div class="drop-list" id="drops"></div></details>
-  <div class="legend" id="legend"></div>
 </header>
 
 <div class="bar-wrap">
   <div class="wrap filters" role="search">
     <div class="field grow">
       <label for="q">Buscar</label>
-      <input type="search" id="q" placeholder="Nombre, organismo, código o motivo">
+      <input type="search" id="q" placeholder="Qué piden, organismo, código…">
     </div>
     <div class="field">
       <label for="region">Región</label>
@@ -207,7 +201,7 @@ footer p { max-width: 70ch; margin: 0; }
       <select id="size"><option value="">Todos</option></select>
     </div>
     <div class="field">
-      <label for="minScore">Puntaje mínimo</label>
+      <label for="minScore">Calce mínimo</label>
       <div class="range"><input type="range" id="minScore" min="0" max="100" step="1" value="0"><output id="minScoreOut" for="minScore">0</output></div>
     </div>
     <div class="field">
@@ -231,12 +225,12 @@ footer p { max-width: 70ch; margin: 0; }
     <table>
       <thead><tr>
         <th data-k="rank" class="num"><button type="button">#</button></th>
-        <th data-k="puntaje"><button type="button">Puntaje</button></th>
         <th data-k="nombre"><button type="button">Licitación</button></th>
         <th data-k="codigo"><button type="button">Código</button></th>
         <th data-k="region"><button type="button">Región</button></th>
         <th data-k="tamano"><button type="button">Tamaño</button></th>
         <th data-k="dias_para_cierre"><button type="button">Cierre</button></th>
+        <th data-k="puntaje" class="num"><button type="button">Calce</button></th>
         <th><span class="visually">★</span></th>
       </tr></thead>
       <tbody id="rows"></tbody>
@@ -246,7 +240,7 @@ footer p { max-width: 70ch; margin: 0; }
 </main>
 
 <footer class="wrap">
-  <p>El puntaje es una ayuda para priorizar. Antes de postular, lee las bases en la ficha de cada licitación: requisitos, garantías, criterios de evaluación y presupuesto.</p>
+  <p>El resumen sale de la descripción y los ítems publicados. Mandan las bases de cada licitación (en su ficha): requisitos, garantías, criterios de evaluación y presupuesto exacto.</p>
 </footer>
 
 <script type="application/json" id="data">/*__DATA__*/</script>
@@ -255,14 +249,13 @@ footer p { max-width: 70ch; margin: 0; }
   "use strict";
   var D = JSON.parse(document.getElementById("data").textContent);
   var rows = D.ranking || [];
-  var PARTS = [
-    { k: "p_palabras", label: "Palabras", max: 45, c: "c1" },
-    { k: "p_categoria", label: "Categoría", max: 25, c: "c2" },
-    { k: "p_region", label: "Región", max: 10, c: "c3" },
-    { k: "p_tamano", label: "Tamaño", max: 10, c: "c4" },
-    { k: "p_plazo", label: "Plazo", max: 10, c: "c5" }
-  ];
-  var STORE = "mp-rank-starred";
+  // Size bracket (from the tender type) -> approximate budget.
+  var BUDGET = {
+    L1: "menos de 100 UTM", LE: "entre 100 y 1.000 UTM", LP: "entre 1.000 y 2.000 UTM",
+    LQ: "entre 2.000 y 5.000 UTM", LR: "más de 5.000 UTM",
+    LS: "servicios personales especializados (sin tramo)", OBRA: "obra pública (ver bases)"
+  };
+  var STORE = "mp-priorizar-marcadas";
   var starred = new Set();
   try { starred = new Set(JSON.parse(localStorage.getItem(STORE) || "[]")); } catch (e) {}
   function saveStars() { try { localStorage.setItem(STORE, JSON.stringify(Array.from(starred))); } catch (e) {} }
@@ -300,9 +293,6 @@ footer p { max-width: 70ch; margin: 0; }
     .map(function (s) { return '<div class="stat"><b>' + esc(typeof s[0] === "number" ? s[0].toLocaleString("es-CL") : s[0]) + "</b><span>" + esc(s[1]) + "</span></div>"; }).join("");
   var drops = Object.entries(stats.dropped || {}).sort(function (a, b) { return b[1] - a[1]; });
   $("drops").innerHTML = drops.map(function (d) { return "<span>" + esc(d[0]) + " <b>" + d[1].toLocaleString("es-CL") + "</b></span>"; }).join("");
-  $("legend").innerHTML = "<span>Puntaje (0–100):</span>" + PARTS.map(function (x) {
-    return '<span><i class="' + x.c + '"></i>' + x.label + ' <span class="max">' + x.max + "</span></span>";
-  }).join("");
 
   // Filter options
   function fillSelect(sel, values, fmt) {
@@ -313,7 +303,9 @@ footer p { max-width: 70ch; margin: 0; }
   fillSelect($("size"), Array.from(new Set(rows.map(function (r) { return r.tamano; }).filter(Boolean))).sort());
 
   rows.forEach(function (r) {
-    r._hay = norm([r.nombre, r.organismo, r.codigo, r.motivos, r.region].join(" "));
+    r.entregables = r.entregables || [];
+    r._hay = norm([r.nombre, r.organismo, r.codigo, r.region, r.descripcion]
+      .concat(r.entregables.map(function (e) { return e.que; })).join(" "));
   });
 
   var state = { q: "", region: "", size: "", minScore: 0, maxDays: "", onlyStar: false, sortK: "rank", sortDir: 1, open: null };
@@ -338,27 +330,35 @@ footer p { max-width: 70ch; margin: 0; }
     return out;
   }
 
-  function scoreCell(r) {
-    var segs = PARTS.map(function (x) {
-      var v = r[x.k] || 0;
-      return v > 0 ? '<i class="' + x.c + '" style="width:' + v + '%" title="' + x.label + ": " + v + " / " + x.max + '"></i>' : "";
-    }).join("");
-    return '<div class="score-top"><b>' + r.puntaje.toFixed(1) + "</b><span>/ 100</span></div>" +
-      '<div class="sbar" role="img" aria-label="' + esc(PARTS.map(function (x) { return x.label + " " + r[x.k]; }).join(", ")) + '">' + segs + "</div>";
+  function gist(r) {
+    var d = String(r.descripcion || "");
+    if (!d || norm(d) === norm(r.nombre)) d = r.entregables.map(function (e) { return e.que; }).slice(0, 3).join(" · ");
+    return d;
   }
 
   function detailRow(r) {
-    var reasons = String(r.motivos || "").split(" | ").map(function (m) { return "<li>" + esc(m) + "</li>"; }).join("");
-    var parts = PARTS.map(function (x) {
-      var v = r[x.k] || 0;
-      return '<div class="part"><span>' + x.label + '</span><div class="track"><i class="' + x.c + '" style="width:' + (100 * v / x.max) + '%"></i></div><span class="v">' + v.toFixed(1) + " / " + x.max + "</span></div>";
-    }).join("");
+    var deliv = r.entregables.map(function (e) {
+      return "<li><span>" + esc(e.que) + "</span>" + (e.cantidad ? '<span class="qty">' + esc(e.cantidad) + "</span>" : "") + "</li>";
+    }).join("") + (r.entregables_extra ? '<li class="more">y ' + r.entregables_extra + " ítems más en la ficha</li>" : "");
+    var days = r.dias_para_cierre;
+    var deadline = fmtDate(r.fecha_cierre) + (days != null ? " (" + (days < 1 ? "hoy" : Math.floor(days) === 1 ? "1 día" : Math.floor(days) + " días") + ")" : "");
+    var why = (String(r.motivos || "").split(" | ").filter(function (m) { return m.indexOf("palabras: ") === 0; })[0] || "")
+      .replace("palabras: ", "").replace(/ \([^)]*\)/g, "");
     return '<tr class="detail"><td colspan="8"><div class="detail-grid">' +
-      "<div><h3>Por qué calza</h3><ul class=\"reasons\">" + reasons + "</ul>" +
-      '<div class="meta">' + esc(r.tipo) + " · " + r.n_items + (r.n_items === 1 ? " ítem" : " ítems") +
-      ' · <a href="' + esc(r.url) + '" target="_blank" rel="noopener">Ver ficha en Mercado Público ↗</a></div></div>' +
-      '<div><h3>Desglose del puntaje</h3><div class="parts">' + parts + "</div></div>" +
-      "</div></td></tr>";
+      '<div><h3>Qué piden</h3><p class="brief">' + esc(r.descripcion || r.nombre) + "</p>" +
+      (deliv ? '<h3>Entregables</h3><ul class="deliv">' + deliv + "</ul>" : "") + "</div>" +
+      '<div><h3>Qué tienes que hacer</h3><ol class="steps">' +
+      '<li>Abre la <a href="' + esc(r.url) + '" target="_blank" rel="noopener">ficha en Mercado Público ↗</a> y descarga las bases.</li>' +
+      "<li>Revisa requisitos, garantías, criterios de evaluación y el presupuesto exacto.</li>" +
+      "<li>Haz tus preguntas en el foro antes de que cierre (la fecha está en la ficha).</li>" +
+      "<li>Sube tu oferta antes del <b>" + esc(deadline) + "</b>.</li></ol>" +
+      '<h3>Datos clave</h3><dl class="facts">' +
+      "<dt>Comprador</dt><dd>" + esc(r.organismo) + "</dd>" +
+      "<dt>Región</dt><dd>" + esc(shortRegion(r.region)) + "</dd>" +
+      "<dt>Monto aprox.</dt><dd>" + esc(BUDGET[r.tamano] || "no indicado") + "</dd>" +
+      "<dt>Tipo</dt><dd>" + esc(r.tipo) + "</dd></dl>" +
+      (why ? '<div class="why">Te la sugerimos porque menciona: ' + esc(why) + "</div>" : "") +
+      "</div></div></td></tr>";
   }
 
   function render() {
@@ -369,12 +369,13 @@ footer p { max-width: 70ch; margin: 0; }
       var sizeOk = (p.tamanos || []).indexOf(r.tamano) !== -1;
       return '<tr class="row' + (isOpen ? " open" : "") + '" data-code="' + esc(r.codigo) + '" tabindex="0" aria-expanded="' + isOpen + '">' +
         '<td class="rank num">' + r.rank + "</td>" +
-        '<td class="score">' + scoreCell(r) + "</td>" +
-        '<td class="name">' + esc(r.nombre) + '<div class="org">' + esc(r.organismo) + "</div></td>" +
+        '<td class="name">' + esc(r.nombre) + '<div class="org">' + esc(r.organismo) + "</div>" +
+        (gist(r) ? '<div class="gist">' + esc(gist(r)) + "</div>" : "") + "</td>" +
         '<td class="codec"><a class="code" href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.codigo) + "</a></td>" +
         '<td class="region">' + esc(shortRegion(r.region)) + "</td>" +
         '<td class="sizec"><span class="chip' + (sizeOk ? " ok" : "") + '" title="' + esc(r.tipo) + '">' + esc(r.tamano || "?") + "</span></td>" +
         '<td class="close">' + daysPill(r.dias_para_cierre) + "<small>" + fmtDate(r.fecha_cierre) + "</small></td>" +
+        '<td class="score num" title="Calce con tu perfil (0–100)">' + Math.round(r.puntaje) + "</td>" +
         '<td class="starc"><button type="button" class="star" aria-pressed="' + on + '" aria-label="Marcar ' + esc(r.codigo) + '">★</button></td>' +
         "</tr>" + (isOpen ? detailRow(r) : "");
     }).join("");

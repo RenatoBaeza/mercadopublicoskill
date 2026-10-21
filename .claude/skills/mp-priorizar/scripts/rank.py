@@ -200,6 +200,41 @@ class Ranker:
         }
 
 
+BOILERPLATE = re.compile(r"^(de acuerdo|segun|según|conforme|ver|indicad|establecid|detallad|las? (bases|especificaciones))", re.I)
+MAX_DELIVERABLES = 30
+
+
+def readable(text):
+    # Many tenders are typed in ALL CAPS; sentence-case them so the summary reads normally.
+    text = re.sub(r"\s+", " ", str(text or "")).strip()
+    letters = [c for c in text if c.isalpha()]
+    if letters and sum(c.isupper() for c in letters) / len(letters) > 0.6:
+        text = text.lower()
+        text = re.sub(r"(^|[.!?]\s+)([a-záéíóúñ])", lambda m: m.group(1) + m.group(2).upper(), text)
+    return text
+
+
+def job_summary(t):
+    """What the buyer wants: the description and the list of deliverables (what, how many)."""
+    deliverables, seen = [], set()
+    for i in t.get("items", []):
+        what = readable(i.get("item_descripcion"))
+        if not what or BOILERPLATE.match(what) or norm(what) == norm(t.get("descripcion")):
+            what = readable(i.get("producto")) or what
+        key = norm(what)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        qty, unit = i.get("cantidad"), i.get("unidad") or ""
+        amount = ""
+        if isinstance(qty, (int, float)) and (qty != 1 or unit.lower() not in ("unidad", "")):
+            amount = f"{qty:g} {unit}".strip()
+        deliverables.append({"que": what, "cantidad": amount})
+    return {"descripcion": readable(t.get("descripcion")),
+            "entregables": deliverables[:MAX_DELIVERABLES],
+            "entregables_extra": max(0, len(deliverables) - MAX_DELIVERABLES)}
+
+
 OUTPUT_COLUMNS = ["rank", "puntaje", "codigo", "nombre", "organismo", "region", "tamano", "tipo",
                   "fecha_cierre", "dias_para_cierre", "n_items", "motivos", "p_palabras",
                   "p_categoria", "p_region", "p_tamano", "p_plazo", "url"]
@@ -280,7 +315,7 @@ def write_md(path, rows, profile, meta, stats):
 
 def write_html(path, rows, profile, meta, stats):
     # Self-contained page: the template plus the ranking embedded as JSON (filters, sorting,
-    # score breakdown and a starred shortlist run in the browser, no server needed).
+    # job summaries and a starred shortlist run in the browser, no server needed).
     template = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ranking_template.html")
     with open(template, encoding="utf-8") as f:
         html = f.read()
@@ -325,8 +360,10 @@ def main():
         })
     scored.sort(key=lambda r: (-r["puntaje"], r["dias_para_cierre"] or 0))
     top = scored[: args.top]
+    by_code = {t.get("codigo"): t for t in tenders}
     for i, r in enumerate(top, 1):
         r["rank"] = i
+        r.update(job_summary(by_code[r["codigo"]]))
 
     meta = {"titulo": data.get("titulo", ""), "descargado": data.get("descargado", ""),
             "generado": now.replace(microsecond=0).isoformat()}
