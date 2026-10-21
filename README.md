@@ -8,7 +8,7 @@ Claude Code skills that help an entrepreneur find Chilean public tenders
 | `/mp-find-tenders` | Runs the full flow below, start to finish |
 | `/mp-company-profile` | Interviews you about your company and saves `data/company_profile.json` |
 | `/mp-download` | Downloads today's published tenders (`att.ashx?id=5`), unzips them to `data/licitaciones.xlsx` and `data/licitaciones.json` |
-| `/mp-rank` | Scores every tender against your profile (0–100) and writes the top 100 to `data/ranking_top100.{xlsx,csv,json,md}` |
+| `/mp-rank` | Scores every tender against your profile (0–100) and writes the top 100 to `data/ranking_top100.{xlsx,csv,json,md,html}` |
 
 Requirements: Python 3.9+; `openpyxl` for the Excel ranking output (`pip install openpyxl`).
 

@@ -21,6 +21,7 @@ import datetime as dt
 import io
 import json
 import math
+import os
 import re
 import sys
 import unicodedata
@@ -277,6 +278,19 @@ def write_md(path, rows, profile, meta, stats):
         f.write("\n".join(lines) + "\n")
 
 
+def write_html(path, rows, profile, meta, stats):
+    # Self-contained page: the template plus the ranking embedded as JSON (filters, sorting,
+    # score breakdown and a starred shortlist run in the browser, no server needed).
+    template = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ranking_template.html")
+    with open(template, encoding="utf-8") as f:
+        html = f.read()
+    payload = {"meta": meta, "stats": stats, "ranking": rows,
+               "perfil": {k: profile.get(k) for k in ("empresa", "regiones", "tamanos")}}
+    data = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(html.replace("/*__DATA__*/", data))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--profile", default="data/company_profile.json")
@@ -321,6 +335,7 @@ def main():
     with open(args.out + ".json", "w", encoding="utf-8") as f:
         json.dump({"meta": meta, "stats": stats, "ranking": top}, f, ensure_ascii=False, indent=1)
     write_md(args.out + ".md", top, profile, meta, stats)
+    write_html(args.out + ".html", top, profile, meta, stats)
     has_xlsx = write_xlsx(args.out + ".xlsx", top, profile, meta)
 
     print(json.dumps({
@@ -328,7 +343,7 @@ def main():
         "con_coincidencias": len(scored),
         "descartadas": dropped,
         "top": len(top),
-        "salidas": [args.out + ext for ext in ([".xlsx"] if has_xlsx else []) + [".csv", ".json", ".md"]],
+        "salidas": [args.out + ext for ext in ([".xlsx"] if has_xlsx else []) + [".csv", ".json", ".md", ".html"]],
         "top10": [f"{r['rank']}. [{r['puntaje']}] {r['codigo']} {r['nombre'][:70]}" for r in top[:10]],
     }, ensure_ascii=False, indent=2))
 

@@ -1,6 +1,6 @@
 ---
 name: mp-rank
-description: Score and rank downloaded Mercado Público tenders against the company profile and suggest the top 100 to apply for, with the reasons for each score, as xlsx/csv/json/markdown. Use when the user asks which Chilean public tenders (licitaciones) their company should apply to, or wants the ranking refreshed.
+description: Score and rank downloaded Mercado Público tenders against the company profile and suggest the top 100 to apply for, with the reasons for each score, as xlsx/csv/json/markdown and an interactive HTML page. Use when the user asks which Chilean public tenders (licitaciones) their company should apply to, or wants the ranking refreshed.
 ---
 
 # Rank tenders for the company
@@ -15,7 +15,10 @@ first. If the data's `descargado` date is not today, offer to refresh it.
 python .claude/skills/mp-rank/scripts/rank.py --profile data/company_profile.json --data data/licitaciones.json --top 100 --out data/ranking_top100
 ```
 
-Outputs `data/ranking_top100.xlsx` (needs `openpyxl`), `.csv`, `.json` and `.md`.
+Outputs `data/ranking_top100.xlsx` (needs `openpyxl`), `.csv`, `.json`, `.md` and `.html`.
+The `.html` is a self-contained page built from `scripts/ranking_template.html`: open it in a
+browser to search, filter by region / size / score / days to close, sort columns, expand a row
+for its score breakdown and reasons, and star a shortlist (kept in the browser's local storage).
 The console prints the counts, the reasons tenders were dropped, and the top 10.
 
 ## How the score works (0–100)
@@ -38,7 +41,7 @@ matches, other regions when `solo_mis_regiones`, and tenders with no keyword or 
    main reasons tenders were dropped.
 2. A table of the **top 15**: rank, score, code linked to its `url`, name, buyer,
    region, size, closing date, plus a short plain-language "why it fits".
-3. The paths to the full top-100 files (`.xlsx` for filtering, `.md` to read).
+3. The paths to the full top-100 files (`.html` to explore interactively, `.xlsx` for filtering, `.md` to read).
 4. Quality check. Read the top 30 names. If unrelated tenders appear (a keyword
    matching the wrong sense, e.g. "limpieza de heridas" for a cleaning company), or
    fewer than ~30 tenders matched, propose specific profile edits: an exclusion word,

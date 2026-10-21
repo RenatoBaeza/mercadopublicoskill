@@ -19,4 +19,4 @@ This skill chains three skills. Follow each one's SKILL.md when you reach its st
    the top 15 with reasons. Then run its quality check and offer one round of profile tuning.
 
 All files live in `data/` at the project root:
-`company_profile.json`, `licitaciones.xlsx`, `licitaciones.json`, `ranking_top100.{xlsx,csv,json,md}`.
+`company_profile.json`, `licitaciones.xlsx`, `licitaciones.json`, `ranking_top100.{xlsx,csv,json,md,html}`.
