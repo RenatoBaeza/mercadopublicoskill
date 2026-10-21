@@ -1,0 +1,23 @@
+# mercadopublicoskill
+
+Claude Code skills that help an entrepreneur find Chilean public tenders
+(licitaciones de [Mercado Público](https://www.mercadopublico.cl)) worth applying to.
+
+| Skill | What it does |
+|---|---|
+| `/mp-find-tenders` | Runs the full flow below, start to finish |
+| `/mp-company-profile` | Interviews you about your company and saves `data/company_profile.json` |
+| `/mp-download` | Downloads today's published tenders (`att.ashx?id=5`), unzips them to `data/licitaciones.xlsx` and `data/licitaciones.json` |
+| `/mp-rank` | Scores every tender against your profile (0–100) and writes the top 100 to `data/ranking_top100.{xlsx,csv,json,md}` |
+
+Requirements: Python 3.9+; `openpyxl` for the Excel ranking output (`pip install openpyxl`).
+
+Scripts can also be run directly:
+
+```
+python .claude/skills/mp-download/scripts/download.py --out data
+python .claude/skills/mp-rank/scripts/suggest_codes.py --data data/licitaciones.json aseo limpieza
+python .claude/skills/mp-rank/scripts/rank.py --profile data/company_profile.json --data data/licitaciones.json
+```
+
+See [profile_template.json](.claude/skills/mp-company-profile/profile_template.json) for the profile format.
