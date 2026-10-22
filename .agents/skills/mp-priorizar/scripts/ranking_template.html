@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ranking de licitaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column. A summary strip, a sticky filter bar, then the ranked list as a
+   ledger of rows (cards on phones). Each row shows what the buyer wants; expanding it shows the
+   full brief, the deliverables and the steps to submit an offer. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #111827;
+  --ink-2: #4b5563;
+  --muted: #7b8494;
+  --line: #e3e6ec;
+  --line-2: #c9ced8;
+  --accent: #1f4e78;
+  --accent-wash: #e8eff7;
+  --star: #c98500;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
+  --good: #0a7d0a; --warn: #a86400; --crit: #c23434;
+  --good-wash: #e6f4e6; --warn-wash: #fbf1dc; --crit-wash: #fbe8e8;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216; --surface: #171b21; --ink: #f3f4f6; --ink-2: #c2c8d2; --muted: #8b93a1;
+    --line: #262c35; --line-2: #39414d; --accent: #8db8e8; --accent-wash: #1b2a3b; --star: #f0b429;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+    --good: #3cc23c; --warn: #f0b429; --crit: #f07070;
+    --good-wash: #13281a; --warn-wash: #2e2411; --crit-wash: #331a1a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216; --surface: #171b21; --ink: #f3f4f6; --ink-2: #c2c8d2; --muted: #8b93a1;
+  --line: #262c35; --line-2: #39414d; --accent: #8db8e8; --accent-wash: #1b2a3b; --star: #f0b429;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  --good: #3cc23c; --warn: #f0b429; --crit: #f07070;
+  --good-wash: #13281a; --warn-wash: #2e2411; --crit-wash: #331a1a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 var(--f-body);
+}
+[hidden] { display: none !important; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; }
+
+header.top { padding-block: 28px 18px; display: grid; gap: 14px; }
+.eyebrow { font: 600 12px/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 800 clamp(24px, 3.4vw, 34px)/1.1 var(--f-display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.sub { color: var(--ink-2); margin: 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 28px; font-variant-numeric: tabular-nums; }
+.stat b { font: 700 22px/1.1 var(--f-display); display: block; }
+.stat span { color: var(--muted); font-size: 13px; }
+details.drops { font-size: 13px; color: var(--ink-2); }
+details.drops summary { cursor: pointer; color: var(--muted); }
+.drop-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.drop-list span { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
+.drop-list b { font-variant-numeric: tabular-nums; }
+
+.bar-wrap { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: end; padding-block: 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+input[type="search"], select {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line-2); border-radius: 6px; padding: 7px 10px; min-height: 36px;
+}
+input[type="search"] { width: min(320px, 100%); }
+.field.grow { flex: 1 1 220px; }
+.field.grow input { width: 100%; }
+.range { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.range input { width: 120px; accent-color: var(--accent); }
+.range output { font: 500 13px var(--f-mono); min-width: 3ch; font-variant-numeric: tabular-nums; }
+.btn {
+  font: 600 13px var(--f-body); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line-2); border-radius: 6px; padding: 7px 12px; min-height: 36px; cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); }
+.btn[aria-pressed="true"] { background: var(--accent-wash); border-color: var(--accent); color: var(--accent); }
+.count { margin-left: auto; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; align-self: center; }
+
+main { padding-block: 16px 48px; }
+.table-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th {
+  text-align: left; font: 600 11px/1.2 var(--f-body); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); padding: 10px 10px; border-bottom: 1px solid var(--line-2); white-space: nowrap; background: var(--surface);
+}
+thead th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+thead th button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+thead th[aria-sort="ascending"] button::after { content: "▲"; font-size: 9px; color: var(--accent); }
+thead th[aria-sort="descending"] button::after { content: "▼"; font-size: 9px; color: var(--accent); }
+tbody td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tbody tr.row { cursor: pointer; }
+tbody tr.row:hover td { background: var(--accent-wash); }
+tbody tr.row.open td { background: var(--accent-wash); border-bottom-color: transparent; }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+.rank { font: 500 13px var(--f-mono); color: var(--muted); width: 3ch; }
+.code { font: 500 12.5px var(--f-mono); white-space: nowrap; }
+.name { font-weight: 600; min-width: 260px; }
+.org { color: var(--ink-2); font-size: 13px; font-weight: 400; margin-top: 2px; }
+.gist { color: var(--ink-2); font-size: 13px; font-weight: 400; margin-top: 6px; max-width: 72ch;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+tr.row.open .gist { display: none; }
+.region { color: var(--ink-2); font-size: 13px; min-width: 120px; }
+.chip { display: inline-block; font: 500 12px/1 var(--f-mono); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--line-2); color: var(--ink-2); }
+.chip.ok { border-color: var(--good); color: var(--good); }
+.close { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.close small { display: block; color: var(--muted); font-size: 12px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill.crit { color: var(--crit); background: var(--crit-wash); }
+.pill.warn { color: var(--warn); background: var(--warn-wash); }
+.pill.good { color: var(--good); background: var(--good-wash); }
+
+.score { font: 700 15px/1.4 var(--f-display); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+.star { all: unset; cursor: pointer; font-size: 18px; line-height: 1; color: var(--line-2); padding: 2px 4px; border-radius: 4px; }
+.star[aria-pressed="true"] { color: var(--star); }
+.star:focus-visible { outline: 2px solid var(--accent); }
+
+tr.detail td { background: var(--accent-wash); padding: 0 10px 16px; }
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 28px; padding-left: 4ch; }
+.detail h3 { font: 700 12px/1 var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; }
+.brief { margin: 0; max-width: 75ch; }
+.deliv { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.deliv li { display: flex; gap: 12px; justify-content: space-between; border-bottom: 1px dashed var(--line-2); padding-bottom: 4px; }
+.deliv .qty { font: 500 12.5px var(--f-mono); color: var(--ink-2); white-space: nowrap; }
+.deliv li.more { color: var(--muted); border: 0; }
+.steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.steps a { font-weight: 600; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 13.5px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }
+.why { font-size: 13px; color: var(--muted); margin-top: 12px; }
+
+.empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+footer { color: var(--muted); font-size: 13px; padding-block: 0 40px; }
+footer p { max-width: 70ch; margin: 0; }
+
+@media (max-width: 760px) {
+  .wrap { padding-inline: 16px; }
+  .count { margin-left: 0; width: 100%; }
+  .table-scroll { background: none; border: 0; overflow: visible; }
+  table, tbody { display: block; }
+  thead { display: none; }
+  tbody tr.row { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 10px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-top: 10px; }
+  tbody tr.row.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  tbody tr.row td { display: block; padding: 0; border: 0; background: none !important; min-width: 0; }
+  tbody tr.row td.rank { grid-column: 1; grid-row: 1; }
+  tbody tr.row td.name { grid-column: 2; grid-row: 1; }
+  tbody tr.row td.starc { grid-column: 3; grid-row: 1; }
+  tbody tr.row td.score { display: none; }
+  tbody tr.row td.codec, tbody tr.row td.region, tbody tr.row td.sizec, tbody tr.row td.close { grid-column: 2 / 4; }
+  .name { min-width: 0; }
+  tr.detail { display: block; }
+  tr.detail td { display: block; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; padding: 0 12px 14px; }
+  .detail-grid { grid-template-columns: 1fr; padding-left: 0; gap: 8px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  tbody tr.row td { transition: background-color .12s; }
+}
+</style>
+</head>
+<body>
+<header class="top wrap">
+  <div class="eyebrow" id="eyebrow">Mercado Público · licitaciones publicadas</div>
+  <h1 id="title">Top licitaciones</h1>
+  <p class="sub" id="source"></p>
+  <div class="stats" id="stats"></div>
+  <details class="drops"><summary>Por qué se descartaron las demás</summary><div class="drop-list" id="drops"></div></details>
+</header>
+
+<div class="bar-wrap">
+  <div class="wrap filters" role="search">
+    <div class="field grow">
+      <label for="q">Buscar</label>
+      <input type="search" id="q" placeholder="Qué piden, organismo, código…">
+    </div>
+    <div class="field">
+      <label for="region">Región</label>
+      <select id="region"><option value="">Todas</option></select>
+    </div>
+    <div class="field">
+      <label for="size">Tamaño</label>
+      <select id="size"><option value="">Todos</option></select>
+    </div>
+    <div class="field">
+      <label for="minScore">Calce mínimo</label>
+      <div class="range"><input type="range" id="minScore" min="0" max="100" step="1" value="0"><output id="minScoreOut" for="minScore">0</output></div>
+    </div>
+    <div class="field">
+      <label for="maxDays">Cierra en (días)</label>
+      <select id="maxDays">
+        <option value="">Cualquier plazo</option>
+        <option value="7">≤ 7 días</option>
+        <option value="14">≤ 14 días</option>
+        <option value="30">≤ 30 días</option>
+      </select>
+    </div>
+    <button class="btn" id="onlyStar" type="button" aria-pressed="false">★ Solo marcadas</button>
+    <button class="btn" id="copy" type="button">Copiar códigos</button>
+    <button class="btn" id="reset" type="button">Limpiar filtros</button>
+    <div class="count" id="count" aria-live="polite"></div>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th data-k="rank" class="num"><button type="button">#</button></th>
+        <th data-k="nombre"><button type="button">Licitación</button></th>
+        <th data-k="codigo"><button type="button">Código</button></th>
+        <th data-k="region"><button type="button">Región</button></th>
+        <th data-k="tamano"><button type="button">Tamaño</button></th>
+        <th data-k="dias_para_cierre"><button type="button">Cierre</button></th>
+        <th data-k="puntaje" class="num"><button type="button">Calce</button></th>
+        <th><span class="visually">★</span></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>Ninguna licitación cumple los filtros. Baja el puntaje mínimo o limpia los filtros.</div>
+  </div>
+</main>
+
+<footer class="wrap">
+  <p>El resumen sale de la descripción y los ítems publicados. Mandan las bases de cada licitación (en su ficha): requisitos, garantías, criterios de evaluación y presupuesto exacto.</p>
+</footer>
+
+<script type="application/json" id="data">/*__DATA__*/</script>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("data").textContent);
+  var rows = D.ranking || [];
+  // Size bracket (from the tender type) -> approximate budget.
+  var BUDGET = {
+    L1: "menos de 100 UTM", LE: "entre 100 y 1.000 UTM", LP: "entre 1.000 y 2.000 UTM",
+    LQ: "entre 2.000 y 5.000 UTM", LR: "más de 5.000 UTM",
+    LS: "servicios personales especializados (sin tramo)", OBRA: "obra pública (ver bases)"
+  };
+  var STORE = "mp-priorizar-marcadas";
+  var starred = new Set();
+  try { starred = new Set(JSON.parse(localStorage.getItem(STORE) || "[]")); } catch (e) {}
+  function saveStars() { try { localStorage.setItem(STORE, JSON.stringify(Array.from(starred))); } catch (e) {} }
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function norm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+  function shortRegion(r) { return String(r || "").replace(/^Región (de |del )?/, ""); }
+  var MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso);
+    return m ? (+m[3]) + " " + MONTHS[+m[2] - 1] + " · " + m[4] + ":" + m[5] : iso;
+  }
+  function daysPill(d) {
+    if (d == null) return "";
+    var cls = d < 5 ? "crit" : d < 10 ? "warn" : "good";
+    var txt = d < 1 ? "hoy" : Math.floor(d) === 1 ? "1 día" : Math.floor(d) + " días";
+    return '<span class="pill ' + cls + '">' + txt + "</span>";
+  }
+
+  // Header
+  var p = D.perfil || {};
+  var meta = D.meta || {}, stats = D.stats || {};
+  if (p.empresa) { $("title").textContent = "Top " + rows.length + " licitaciones para " + p.empresa; document.title = "Ranking · " + p.empresa; }
+  $("source").textContent = [meta.titulo, meta.generado ? "ranking generado " + fmtDate(meta.generado) : ""].filter(Boolean).join(" · ");
+  var statItems = [[stats.total, "licitaciones evaluadas"], [stats.ranked, "con coincidencias"], [rows.length, "en este ranking"]];
+  if (p.regiones && p.regiones.length) statItems.push([p.regiones.join(", "), "tus regiones"]);
+  if (p.tamanos && p.tamanos.length) statItems.push([p.tamanos.join(" · "), "tamaños que manejas"]);
+  $("stats").innerHTML = statItems.filter(function (s) { return s[0] != null && s[0] !== ""; })
+    .map(function (s) { return '<div class="stat"><b>' + esc(typeof s[0] === "number" ? s[0].toLocaleString("es-CL") : s[0]) + "</b><span>" + esc(s[1]) + "</span></div>"; }).join("");
+  var drops = Object.entries(stats.dropped || {}).sort(function (a, b) { return b[1] - a[1]; });
+  $("drops").innerHTML = drops.map(function (d) { return "<span>" + esc(d[0]) + " <b>" + d[1].toLocaleString("es-CL") + "</b></span>"; }).join("");
+
+  // Filter options
+  function fillSelect(sel, values, fmt) {
+    values.forEach(function (v) { var o = document.createElement("option"); o.value = v; o.textContent = fmt ? fmt(v) : v; sel.appendChild(o); });
+  }
+  var regions = Array.from(new Set(rows.map(function (r) { return r.region; }).filter(Boolean))).sort();
+  fillSelect($("region"), regions, shortRegion);
+  fillSelect($("size"), Array.from(new Set(rows.map(function (r) { return r.tamano; }).filter(Boolean))).sort());
+
+  rows.forEach(function (r) {
+    r.entregables = r.entregables || [];
+    r._hay = norm([r.nombre, r.organismo, r.codigo, r.region, r.descripcion]
+      .concat(r.entregables.map(function (e) { return e.que; })).join(" "));
+  });
+
+  var state = { q: "", region: "", size: "", minScore: 0, maxDays: "", onlyStar: false, sortK: "rank", sortDir: 1, open: null };
+
+  function filtered() {
+    var q = norm(state.q).trim().split(/\s+/).filter(Boolean);
+    var out = rows.filter(function (r) {
+      if (state.region && r.region !== state.region) return false;
+      if (state.size && r.tamano !== state.size) return false;
+      if (r.puntaje < state.minScore) return false;
+      if (state.maxDays && (r.dias_para_cierre == null || r.dias_para_cierre > +state.maxDays)) return false;
+      if (state.onlyStar && !starred.has(r.codigo)) return false;
+      return q.every(function (t) { return r._hay.indexOf(t) !== -1; });
+    });
+    var k = state.sortK, dir = state.sortDir;
+    out.sort(function (a, b) {
+      var x = a[k], y = b[k];
+      if (x == null) return 1; if (y == null) return -1;
+      if (typeof x === "string") return dir * x.localeCompare(y, "es");
+      return dir * (x - y) || a.rank - b.rank;
+    });
+    return out;
+  }
+
+  function gist(r) {
+    var d = String(r.descripcion || "");
+    if (!d || norm(d) === norm(r.nombre)) d = r.entregables.map(function (e) { return e.que; }).slice(0, 3).join(" · ");
+    return d;
+  }
+
+  function detailRow(r) {
+    var deliv = r.entregables.map(function (e) {
+      return "<li><span>" + esc(e.que) + "</span>" + (e.cantidad ? '<span class="qty">' + esc(e.cantidad) + "</span>" : "") + "</li>";
+    }).join("") + (r.entregables_extra ? '<li class="more">y ' + r.entregables_extra + " ítems más en la ficha</li>" : "");
+    var days = r.dias_para_cierre;
+    var deadline = fmtDate(r.fecha_cierre) + (days != null ? " (" + (days < 1 ? "hoy" : Math.floor(days) === 1 ? "1 día" : Math.floor(days) + " días") + ")" : "");
+    var why = (String(r.motivos || "").split(" | ").filter(function (m) { return m.indexOf("palabras: ") === 0; })[0] || "")
+      .replace("palabras: ", "").replace(/ \([^)]*\)/g, "");
+    return '<tr class="detail"><td colspan="8"><div class="detail-grid">' +
+      '<div><h3>Qué piden</h3><p class="brief">' + esc(r.descripcion || r.nombre) + "</p>" +
+      (deliv ? '<h3>Entregables</h3><ul class="deliv">' + deliv + "</ul>" : "") + "</div>" +
+      '<div><h3>Qué tienes que hacer</h3><ol class="steps">' +
+      '<li>Abre la <a href="' + esc(r.url) + '" target="_blank" rel="noopener">ficha en Mercado Público ↗</a> y descarga las bases.</li>' +
+      "<li>Revisa requisitos, garantías, criterios de evaluación y el presupuesto exacto.</li>" +
+      "<li>Haz tus preguntas en el foro antes de que cierre (la fecha está en la ficha).</li>" +
+      "<li>Sube tu oferta antes del <b>" + esc(deadline) + "</b>.</li></ol>" +
+      '<h3>Datos clave</h3><dl class="facts">' +
+      "<dt>Comprador</dt><dd>" + esc(r.organismo) + "</dd>" +
+      "<dt>Región</dt><dd>" + esc(shortRegion(r.region)) + "</dd>" +
+      "<dt>Monto aprox.</dt><dd>" + esc(BUDGET[r.tamano] || "no indicado") + "</dd>" +
+      "<dt>Tipo</dt><dd>" + esc(r.tipo) + "</dd></dl>" +
+      (why ? '<div class="why">Te la sugerimos porque menciona: ' + esc(why) + "</div>" : "") +
+      "</div></div></td></tr>";
+  }
+
+  function render() {
+    var list = filtered();
+    var html = list.map(function (r) {
+      var isOpen = state.open === r.codigo;
+      var on = starred.has(r.codigo);
+      var sizeOk = (p.tamanos || []).indexOf(r.tamano) !== -1;
+      return '<tr class="row' + (isOpen ? " open" : "") + '" data-code="' + esc(r.codigo) + '" tabindex="0" aria-expanded="' + isOpen + '">' +
+        '<td class="rank num">' + r.rank + "</td>" +
+        '<td class="name">' + esc(r.nombre) + '<div class="org">' + esc(r.organismo) + "</div>" +
+        (gist(r) ? '<div class="gist">' + esc(gist(r)) + "</div>" : "") + "</td>" +
+        '<td class="codec"><a class="code" href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.codigo) + "</a></td>" +
+        '<td class="region">' + esc(shortRegion(r.region)) + "</td>" +
+        '<td class="sizec"><span class="chip' + (sizeOk ? " ok" : "") + '" title="' + esc(r.tipo) + '">' + esc(r.tamano || "?") + "</span></td>" +
+        '<td class="close">' + daysPill(r.dias_para_cierre) + "<small>" + fmtDate(r.fecha_cierre) + "</small></td>" +
+        '<td class="score num" title="Calce con tu perfil (0–100)">' + Math.round(r.puntaje) + "</td>" +
+        '<td class="starc"><button type="button" class="star" aria-pressed="' + on + '" aria-label="Marcar ' + esc(r.codigo) + '">★</button></td>' +
+        "</tr>" + (isOpen ? detailRow(r) : "");
+    }).join("");
+    $("rows").innerHTML = html;
+    $("empty").hidden = list.length > 0;
+    var n = starred.size;
+    $("count").textContent = list.length + " de " + rows.length + " licitaciones" + (n ? " · " + n + " marcadas" : "");
+    document.querySelectorAll("thead th[data-k]").forEach(function (th) {
+      th.setAttribute("aria-sort", th.dataset.k === state.sortK ? (state.sortDir > 0 ? "ascending" : "descending") : "none");
+    });
+    return list;
+  }
+
+  // Events
+  $("q").addEventListener("input", function (e) { state.q = e.target.value; render(); });
+  $("region").addEventListener("change", function (e) { state.region = e.target.value; render(); });
+  $("size").addEventListener("change", function (e) { state.size = e.target.value; render(); });
+  $("maxDays").addEventListener("change", function (e) { state.maxDays = e.target.value; render(); });
+  $("minScore").addEventListener("input", function (e) { state.minScore = +e.target.value; $("minScoreOut").textContent = e.target.value; render(); });
+  $("onlyStar").addEventListener("click", function (e) {
+    state.onlyStar = !state.onlyStar; e.currentTarget.setAttribute("aria-pressed", state.onlyStar); render();
+  });
+  $("reset").addEventListener("click", function () {
+    Object.assign(state, { q: "", region: "", size: "", minScore: 0, maxDays: "", onlyStar: false, sortK: "rank", sortDir: 1 });
+    $("q").value = ""; $("region").value = ""; $("size").value = ""; $("maxDays").value = "";
+    $("minScore").value = 0; $("minScoreOut").textContent = "0"; $("onlyStar").setAttribute("aria-pressed", "false");
+    render();
+  });
+  $("copy").addEventListener("click", function (e) {
+    var btn = e.currentTarget, list = filtered();
+    var text = list.map(function (r) { return r.codigo + "\t" + r.nombre + "\t" + r.url; }).join("\n");
+    var done = function (msg) { btn.textContent = msg; setTimeout(function () { btn.textContent = "Copiar códigos"; }, 1600); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(list.length + " copiados"); }, function () { done("No se pudo copiar"); });
+    } else { done("No se pudo copiar"); }
+  });
+  document.querySelectorAll("thead th[data-k] button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var k = b.parentElement.dataset.k;
+      if (state.sortK === k) state.sortDir *= -1;
+      else { state.sortK = k; state.sortDir = (k === "puntaje") ? -1 : 1; }
+      render();
+    });
+  });
+  function toggleRow(tr) {
+    var code = tr.dataset.code;
+    state.open = state.open === code ? null : code;
+    render();
+    var again = document.querySelector('tr.row[data-code="' + CSS.escape(code) + '"]');
+    if (again) again.focus({ preventScroll: true });
+  }
+  $("rows").addEventListener("click", function (e) {
+    var star = e.target.closest(".star");
+    var tr = e.target.closest("tr.row");
+    if (star && tr) {
+      var c = tr.dataset.code;
+      if (starred.has(c)) starred.delete(c); else starred.add(c);
+      saveStars(); render(); return;
+    }
+    if (e.target.closest("a")) return;
+    if (tr) toggleRow(tr);
+  });
+  $("rows").addEventListener("keydown", function (e) {
+    var tr = e.target.closest("tr.row");
+    if (tr && e.target === tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleRow(tr); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
