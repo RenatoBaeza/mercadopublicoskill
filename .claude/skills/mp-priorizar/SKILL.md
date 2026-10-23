@@ -36,7 +36,7 @@ The console prints the counts, the reasons tenders were dropped, and the top 10.
 
 Dropped before scoring: closed tenders, tenders closing within `dias_minimos_preparacion`,
 private tenders (unless `incluir_privadas`), `excluir_palabras` / `excluir_palabras_titulo` / `excluir_organismos`
-matches, other regions when `solo_mis_regiones`, and tenders with no keyword or category match.
+matches, other regions when `solo_mis_regiones`, other sizes when `solo_mis_tamanos`, and tenders with no keyword or category match.
 
 ## Present the results
 

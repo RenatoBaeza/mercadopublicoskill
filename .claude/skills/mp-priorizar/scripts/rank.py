@@ -100,6 +100,7 @@ class Ranker:
         self.min_days = float(profile.get("dias_minimos_preparacion", 3))
         self.include_private = bool(profile.get("incluir_privadas", False))
         self.only_my_regions = bool(profile.get("solo_mis_regiones", False))
+        self.only_my_sizes = bool(profile.get("solo_mis_tamanos", False))
 
     def item_category_quality(self, item):
         best, why = 0.0, ""
@@ -143,6 +144,11 @@ class Ranker:
         if self.only_my_regions and not region_ok:
             return None, "fuera de región"
 
+        size = t.get("tamano", "")
+        size_known = size not in ("LS", "OBRA", "")
+        if self.only_my_sizes and self.sizes and size_known and size not in self.sizes:
+            return None, "fuera de tamaño"
+
         # Keywords: each keyword counts once, at its best-weighted field.
         raw, hits = 0.0, []
         for word, stems, weight in self.kw:
@@ -163,10 +169,9 @@ class Ranker:
         if kw_score == 0 and cat_score == 0:
             return None, "sin coincidencias"
 
-        size = t.get("tamano", "")
         if not self.sizes or size in self.sizes:
             size_score = W_SIZE
-        elif size in ("LS", "OBRA", ""):
+        elif not size_known:
             size_score = W_SIZE / 2  # size unknown from the tender type
         else:
             size_score = 0.0

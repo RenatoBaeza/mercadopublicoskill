@@ -15,6 +15,7 @@
   "regiones": ["Metropolitana", "Valparaíso", "O'Higgins"],
   "solo_mis_regiones": false,
   "tamanos": ["L1", "LE", "LP"],
+  "solo_mis_tamanos": false,
   "dias_minimos_preparacion": 5,
   "incluir_privadas": false
 }

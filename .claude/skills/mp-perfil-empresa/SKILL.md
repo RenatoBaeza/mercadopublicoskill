@@ -94,6 +94,7 @@ Write `data/company_profile.json` (create `data/` if needed) following
 | `regiones` | Region names, e.g. `"Metropolitana"`, `"Biobío"`, `"Los Lagos"`. Empty = all Chile |
 | `solo_mis_regiones` | `true` drops other regions instead of scoring them lower |
 | `tamanos` | Any of `L1`, `LE`, `LP`, `LQ`, `LR` |
+| `solo_mis_tamanos` | `true` drops tenders of other sizes instead of scoring them lower (unknown sizes `LS`/`OBRA` are kept). Suggest `true` when the company cannot issue guarantees |
 | `dias_minimos_preparacion` | Tenders closing sooner than this are dropped |
 | `incluir_privadas` | Include invitation-only tenders |
 
