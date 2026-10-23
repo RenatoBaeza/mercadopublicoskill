@@ -36,7 +36,8 @@ The console prints the counts, the reasons tenders were dropped, and the top 10.
 | Size | 10 | Size bracket in `tamanos`; half credit when the size is unknown (`LS`, `OBRA`) |
 | Time | 10 | Full credit at ≥ 6 days beyond `dias_minimos_preparacion` |
 
-Dropped before scoring: closed tenders, tenders closing within `dias_minimos_preparacion`,
+Dropped before scoring: closed tenders, tenders with no closing date published more than 90 days ago
+(the export keeps some stale ones from as far back as 2010), tenders closing within `dias_minimos_preparacion`,
 private tenders (unless `incluir_privadas`), `excluir_palabras` / `excluir_palabras_titulo` / `excluir_organismos`
 matches, other regions when `solo_mis_regiones`, other sizes when `solo_mis_tamanos`, and tenders with no keyword or category match.
 

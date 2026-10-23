@@ -34,6 +34,9 @@ W_KEYWORDS, W_CATEGORY, W_REGION, W_SIZE, W_TIME = 45, 25, 10, 10, 10
 FIELD_WEIGHTS = {"nombre": 3.0, "items": 2.0, "categorias": 1.5, "descripcion": 1.0}
 FIELD_LABELS = {"nombre": "título", "items": "ítems", "categorias": "categoría", "descripcion": "descripción"}
 ONU_PREFIX_QUALITY = {8: 1.0, 6: 0.85, 4: 0.7, 2: 0.4}
+# The export keeps some stale tenders with no closing date (some published in 2010);
+# undated tenders older than this are treated as closed.
+MAX_AGE_UNDATED_DAYS = 90
 STOPWORDS = {"de", "del", "la", "las", "el", "los", "y", "e", "o", "u", "en", "para", "por",
              "con", "a", "al", "un", "una", "sus", "su", "the", "and", "of", "for"}
 NATIONWIDE = {"", "todas", "todo chile", "nacional", "chile", "all"}
@@ -129,6 +132,10 @@ class Ranker:
         days_left = (cierre - self.now).total_seconds() / 86400 if cierre else None
         if days_left is not None and days_left < 0:
             return None, "cerrada"
+        if cierre is None:
+            publicada = parse_date(t.get("fecha_publicacion"))
+            if publicada is None or (self.now - publicada).days > MAX_AGE_UNDATED_DAYS:
+                return None, "sin fecha de cierre y antigua"
         if days_left is not None and days_left < self.min_days:
             return None, "cierra muy pronto"
         if t.get("privada") and not self.include_private:
@@ -197,6 +204,8 @@ class Ranker:
         reasons.append(f"tamaño {size or '?'} {'✓' if size_score == W_SIZE else '~' if size_score else '✗'}")
         if days_left is not None:
             reasons.append(f"cierra en {days_left:.0f} días")
+        else:
+            reasons.append("sin fecha de cierre: verificar en el portal")
         return round(total, 1), {
             "puntaje": round(total, 1),
             "p_palabras": round(kw_score, 1),
