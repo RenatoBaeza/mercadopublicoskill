@@ -13,7 +13,7 @@ closed, close before `dias_minimos_preparacion`, are private (unless
 
 Usage:
     python rank.py --profile data/company_profile.json --data data/licitaciones.json \
-                   [--top 100] [--out data/ranking_top100] [--now 2026-10-21T08:00]
+                   [--top 100] [--out data/ranking_top100] [--now 2026-10-21T08:00] [--open]
 """
 import argparse
 import csv
@@ -22,9 +22,13 @@ import io
 import json
 import math
 import os
+import pathlib
 import re
+import shutil
+import subprocess
 import sys
 import unicodedata
+import webbrowser
 
 W_KEYWORDS, W_CATEGORY, W_REGION, W_SIZE, W_TIME = 45, 25, 10, 10, 10
 FIELD_WEIGHTS = {"nombre": 3.0, "items": 2.0, "categorias": 1.5, "descripcion": 1.0}
@@ -331,6 +335,23 @@ def write_html(path, rows, profile, meta, stats):
         f.write(html.replace("/*__DATA__*/", data))
 
 
+def open_in_browser(path):
+    """Opens the file in Chrome if installed, else in the default browser. Returns which one."""
+    url = pathlib.Path(path).resolve().as_uri()
+    if sys.platform == "win32":
+        candidates = [os.path.join(os.environ[v], "Google", "Chrome", "Application", "chrome.exe")
+                      for v in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA") if os.environ.get(v)]
+    elif sys.platform == "darwin":
+        candidates = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
+    else:
+        candidates = [shutil.which(n) for n in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser")]
+    for exe in candidates:
+        if exe and os.path.isfile(exe):
+            subprocess.Popen([exe, url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return "chrome"
+    return "navegador predeterminado" if webbrowser.open(url) else None
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--profile", default="data/company_profile.json")
@@ -338,6 +359,7 @@ def main():
     ap.add_argument("--top", type=int, default=100)
     ap.add_argument("--out", default="data/ranking_top100", help="output path prefix (no extension)")
     ap.add_argument("--now", help="reference time, ISO format (default: current local time)")
+    ap.add_argument("--open", action="store_true", help="open the HTML report in Chrome (or the default browser)")
     args = ap.parse_args()
 
     with open(args.profile, encoding="utf-8") as f:
@@ -388,6 +410,9 @@ def main():
         "salidas": [args.out + ext for ext in ([".xlsx"] if has_xlsx else []) + [".csv", ".json", ".md", ".html"]],
         "top10": [f"{r['rank']}. [{r['puntaje']}] {r['codigo']} {r['nombre'][:70]}" for r in top[:10]],
     }, ensure_ascii=False, indent=2))
+    if args.open:
+        opened = open_in_browser(args.out + ".html")
+        print(f"HTML abierto en {opened}" if opened else "No se pudo abrir el HTML en un navegador")
 
 
 if __name__ == "__main__":

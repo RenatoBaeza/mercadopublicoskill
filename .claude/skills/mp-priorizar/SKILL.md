@@ -12,10 +12,12 @@ first. If the data's `descargado` date is not today, offer to refresh it.
 ## Run
 
 ```
-python .claude/skills/mp-priorizar/scripts/rank.py --profile data/company_profile.json --data data/licitaciones.json --top 100 --out data/ranking_top100
+python .claude/skills/mp-priorizar/scripts/rank.py --profile data/company_profile.json --data data/licitaciones.json --top 100 --out data/ranking_top100 --open
 ```
 
 Outputs `data/ranking_top100.xlsx` (needs `openpyxl`), `.csv`, `.json`, `.md` and `.html`.
+`--open` opens the `.html` in Chrome when it is installed, otherwise in the default browser
+(leave it out for quick re-runs while tuning the profile if the user doesn't want a new tab each time).
 The `.html` is a self-contained page built from `scripts/ranking_template.html`: open it in a
 browser to search, filter by region / size / score / days to close, and sort columns. Each row
 shows what the buyer wants; expanding it shows the job summary (full description, deliverables
