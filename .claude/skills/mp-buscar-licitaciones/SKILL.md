@@ -17,6 +17,10 @@ This skill chains three skills. Follow each one's SKILL.md when you reach its st
    (`suggest_codes.py`) to propose Código ONU codes and exclusions, and confirm them with the user.
 4. **Rank**: `mp-priorizar` ([SKILL.md](../mp-priorizar/SKILL.md)). Produce the top 100 and present
    the top 15 with reasons. Then run its quality check and offer one round of profile tuning.
+5. **Competition** (optional, offer it after the ranking): `mp-competencia` ([SKILL.md](../mp-competencia/SKILL.md)).
+   Shows who won similar tenders in the last 12 months, incumbents by buyer, and bidder counts
+   and reference amounts for the ranked tenders, and past awarded tenders that fit the profile with who won them.
 
 All files live in `data/` at the project root:
-`company_profile.json`, `licitaciones.xlsx`, `licitaciones.json`, `ranking_top100.{xlsx,csv,json,md,html}`.
+`company_profile.json`, `licitaciones.xlsx`, `licitaciones.json`, `ranking_top100.{xlsx,csv,json,md,html}`,
+`historico.json`, `competencia.{json,md,xlsx,html}`, `historico_ranking.{json,csv,xlsx,html}`.

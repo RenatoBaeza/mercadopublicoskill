@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Competencia en licitaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column. A summary strip with the segment's numbers, tabs for the four
+   views (competitors, incumbents, current ranking vs history, past tenders), a sticky search bar,
+   then a sortable ledger. Expanding a row shows the bids behind it. Same tokens as the ranking page. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #111827;
+  --ink-2: #4b5563;
+  --muted: #7b8494;
+  --line: #e3e6ec;
+  --line-2: #c9ced8;
+  --accent: #1f4e78;
+  --accent-wash: #e8eff7;
+  --good: #0a7d0a; --warn: #a86400; --crit: #c23434;
+  --good-wash: #e6f4e6; --warn-wash: #fbf1dc; --crit-wash: #fbe8e8;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216; --surface: #171b21; --ink: #f3f4f6; --ink-2: #c2c8d2; --muted: #8b93a1;
+    --line: #262c35; --line-2: #39414d; --accent: #8db8e8; --accent-wash: #1b2a3b;
+    --good: #3cc23c; --warn: #f0b429; --crit: #f07070;
+    --good-wash: #13281a; --warn-wash: #2e2411; --crit-wash: #331a1a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216; --surface: #171b21; --ink: #f3f4f6; --ink-2: #c2c8d2; --muted: #8b93a1;
+  --line: #262c35; --line-2: #39414d; --accent: #8db8e8; --accent-wash: #1b2a3b;
+  --good: #3cc23c; --warn: #f0b429; --crit: #f07070;
+  --good-wash: #13281a; --warn-wash: #2e2411; --crit-wash: #331a1a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+[hidden] { display: none !important; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; }
+
+header.top { padding-block: 28px 18px; display: grid; gap: 14px; }
+.eyebrow { font: 600 12px/1 var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 800 clamp(24px, 3.4vw, 34px)/1.1 var(--f-display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.sub { color: var(--ink-2); margin: 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 28px; font-variant-numeric: tabular-nums; }
+.stat b { font: 700 22px/1.1 var(--f-display); display: block; }
+.stat span { color: var(--muted); font-size: 13px; }
+
+.sizes { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.sizes table { font-size: 13.5px; }
+.sizes td, .sizes th { padding: 7px 10px; }
+.sizes tr.mine td { background: var(--accent-wash); font-weight: 600; }
+.sizes caption { text-align: left; padding: 10px 10px 2px; font: 700 12px/1 var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; padding-top: 6px; }
+.tab {
+  font: 600 14px var(--f-body); color: var(--ink-2); background: none; border: 0;
+  border-bottom: 2px solid transparent; padding: 8px 12px; cursor: pointer; min-height: 40px;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.tab small { font: 500 12px var(--f-mono); color: var(--muted); margin-left: 4px; }
+
+.bar-wrap { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: end; padding-block: 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+input[type="search"], select {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line-2); border-radius: 6px; padding: 7px 10px; min-height: 36px;
+}
+.field.grow { flex: 1 1 220px; }
+.field.grow input { width: 100%; }
+.btn {
+  font: 600 13px var(--f-body); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line-2); border-radius: 6px; padding: 7px 12px; min-height: 36px; cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); }
+.btn[aria-pressed="true"] { background: var(--accent-wash); border-color: var(--accent); color: var(--accent); }
+.count { margin-left: auto; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; align-self: center; }
+.hint { color: var(--ink-2); font-size: 13.5px; margin: 0 0 12px; max-width: 90ch; }
+
+main { padding-block: 16px 48px; }
+.table-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th {
+  text-align: left; font: 600 11px/1.2 var(--f-body); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); padding: 10px; border-bottom: 1px solid var(--line-2); white-space: nowrap; background: var(--surface);
+}
+thead th.num { text-align: right; }
+thead th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+thead th button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+thead th[aria-sort="ascending"] button::after { content: "▲"; font-size: 9px; color: var(--accent); }
+thead th[aria-sort="descending"] button::after { content: "▼"; font-size: 9px; color: var(--accent); }
+tbody td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+#rows tr.row { cursor: pointer; }
+#rows tr.row:hover td { background: var(--accent-wash); }
+#rows tr.row.open td { background: var(--accent-wash); border-bottom-color: transparent; }
+.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.mono { font: 500 12.5px var(--f-mono); white-space: nowrap; }
+.name { font-weight: 600; min-width: 240px; }
+.small { color: var(--ink-2); font-size: 13px; font-weight: 400; margin-top: 2px; }
+.gist { color: var(--muted); font-size: 12.5px; font-weight: 400; margin-top: 4px; max-width: 70ch;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wide { min-width: 220px; color: var(--ink-2); font-size: 13px; }
+.chip { display: inline-block; font: 500 12px/1 var(--f-mono); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--line-2); color: var(--ink-2); }
+.chip.mine { border-color: var(--accent); color: var(--accent); }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill.crit { color: var(--crit); background: var(--crit-wash); }
+.pill.warn { color: var(--warn); background: var(--warn-wash); }
+.pill.good { color: var(--good); background: var(--good-wash); }
+.bar { display: inline-block; width: 46px; height: 6px; border-radius: 3px; background: var(--line); vertical-align: middle; margin-left: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+
+tr.detail td { background: var(--accent-wash); padding: 0 10px 16px; }
+.detail h3 { font: 700 12px/1 var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; }
+.sub-table { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; }
+.sub-table table { font-size: 13px; }
+.sub-table td, .sub-table th { padding: 6px 8px; }
+.sub-table tr.won td { font-weight: 600; }
+.more { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+.empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+.show-more { display: flex; justify-content: center; padding: 14px; }
+footer { color: var(--muted); font-size: 13px; padding-block: 0 40px; }
+footer p { max-width: 80ch; margin: 0 0 6px; }
+
+@media (max-width: 760px) {
+  .wrap { padding-inline: 16px; }
+  .count { margin-left: 0; width: 100%; }
+  .name { min-width: 180px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #rows tr.row td { transition: background-color .12s; }
+}
+</style>
+</head>
+<body>
+<header class="top wrap">
+  <div class="eyebrow">Mercado Público · historial de ofertas y adjudicaciones</div>
+  <h1>Competencia</h1>
+  <p class="sub" id="source"></p>
+  <div class="stats" id="stats"></div>
+  <div class="sizes"><table id="sizes"><caption>Por tamaño (tu segmento destacado)</caption></table></div>
+  <div class="tabs" role="tablist" id="tabs"></div>
+</header>
+
+<div class="bar-wrap">
+  <div class="wrap filters" role="search">
+    <div class="field grow">
+      <label for="q">Buscar</label>
+      <input type="search" id="q" placeholder="Proveedor, RUT, comprador, código, qué se compró…">
+    </div>
+    <div class="field" id="sizeField">
+      <label for="size">Tamaño</label>
+      <select id="size"><option value="">Todos</option></select>
+    </div>
+    <button class="btn" id="segment" type="button" aria-pressed="true">Solo mi segmento</button>
+    <button class="btn" id="reset" type="button">Limpiar</button>
+    <div class="count" id="count" aria-live="polite"></div>
+  </div>
+</div>
+
+<main class="wrap">
+  <p class="hint" id="hint"></p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>Nada coincide con la búsqueda.</div>
+    <div class="show-more" id="moreWrap" hidden><button class="btn" id="more" type="button">Mostrar más</button></div>
+  </div>
+</main>
+
+<footer class="wrap">
+  <p>Fuente: datos abiertos de ChileCompra (una fila por oferta y línea, con la oferta seleccionada). Se incluyen solo licitaciones que calzan con tu perfil (códigos ONU y palabras clave), así que puede colarse alguna ajena: revisa qué ganó cada proveedor antes de tratarlo como competidor.</p>
+  <p>Montos en millones de CLP; los ofertados en UF, USD o EUR se convierten a una tasa aproximada. Una licitación puede adjudicarse a varios proveedores por línea. «Mismo comprador» toma el prefijo del código de la licitación (la unidad compradora).</p>
+</footer>
+
+<script type="application/json" id="data">/*__DATA__*/</script>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("data").textContent);
+  var M = D.meta || {};
+  var MINE = new Set(M.tamanos_perfil || []);
+  var LIC = D.licitaciones || [];
+  var byCode = {};
+  LIC.forEach(function (t) { byCode[t.codigo] = t; });
+  var byRut = {};
+  LIC.forEach(function (t) {
+    (t.ofertas || []).forEach(function (o) { (byRut[o[0]] = byRut[o[0]] || []).push(t); });
+  });
+  var byBuyer = {};
+  LIC.forEach(function (t) { var k = t.codigo.split("-")[0]; (byBuyer[k] = byBuyer[k] || []).push(t); });
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function norm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+  function mm(x) { return x == null ? "—" : "$" + Number(x).toLocaleString("es-CL", { maximumFractionDigits: 1 }) + " MM"; }
+  function pesosMM(p) { return p ? mm(Math.round(p / 1e5) / 10) : "—"; }
+  function num(x) { return x == null ? "—" : Number(x).toLocaleString("es-CL"); }
+  var MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  function fmtDate(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+    return m ? (+m[3]) + " " + MONTHS[+m[2] - 1] + " " + m[1].slice(2) : "—";
+  }
+  // Unawarded tenders carry the planned award date, often in the future: use publication instead.
+  function tDate(t) { return (t.ganadores && t.fecha_adjudicacion) || t.fecha_publicacion || ""; }
+  function shortRegion(r) { return String(r || "").replace(/^Región (de |del )?/, "").trim(); }
+  function sizeChip(s) { return '<span class="chip' + (MINE.has(s) ? " mine" : "") + '">' + esc(s || "—") + "</span>"; }
+  function link(t) {
+    return '<a class="mono" href="' + esc(t.url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' + esc(t.codigo) + "</a>";
+  }
+  function bidderPill(n) {
+    if (!n) return "—";
+    var cls = n <= 2 ? "good" : n <= 5 ? "warn" : "crit";
+    return '<span class="pill ' + cls + '" title="Oferentes">' + num(n) + "</span>";
+  }
+  function statePill(t) {
+    if (t.ganadores) return '<span class="pill good">Adjudicada</span>';
+    var e = norm(t.estado);
+    return '<span class="pill ' + (e.indexOf("desierta") === 0 ? "crit" : "warn") + '">' + esc((t.estado || "").split(" (")[0]) + "</span>";
+  }
+
+  // Header: source, stats, size table.
+  var seg = (D.por_tamano || []).filter(function (r) { return MINE.has(r.tamano); });
+  var segN = seg.reduce(function (a, r) { return a + r.adjudicadas; }, 0);
+  var segBid = segN ? seg.reduce(function (a, r) { return a + (r.oferentes_promedio || 0) * r.adjudicadas; }, 0) / segN : null;
+  var segOne = segN ? seg.reduce(function (a, r) { return a + (r.pct_un_oferente || 0) * r.adjudicadas; }, 0) / segN : null;
+  $("source").textContent = (M.empresa ? M.empresa + " · " : "") + "Historial " + (M.meses || "") +
+    " · montos en millones de CLP";
+  var stats = [
+    [num(M.licitaciones), "licitaciones de tu rubro"],
+    [num(M.adjudicadas), "adjudicadas"],
+    [num(M.proveedores), "proveedores ofertaron"],
+    [segBid ? segBid.toLocaleString("es-CL", { maximumFractionDigits: 1 }) : "—", "oferentes promedio en " + Array.from(MINE).join("/")],
+    [segOne != null ? Math.round(segOne) + "%" : "—", "con un solo oferente en " + Array.from(MINE).join("/")]
+  ];
+  $("stats").innerHTML = stats.map(function (s) { return '<div class="stat"><b>' + esc(s[0]) + "</b><span>" + esc(s[1]) + "</span></div>"; }).join("");
+  $("sizes").insertAdjacentHTML("beforeend",
+    "<thead><tr><th>Tamaño</th><th class=num>Licitaciones</th><th class=num>Adjudicadas</th><th class=num>Desiertas</th>" +
+    "<th class=num>Oferentes prom.</th><th class=num>Con 1 oferente</th><th class=num>Monto mediano</th></tr></thead><tbody>" +
+    (D.por_tamano || []).map(function (r) {
+      return '<tr class="' + (MINE.has(r.tamano) ? "mine" : "") + '"><td>' + esc(r.tamano) + "</td><td class=num>" + num(r.licitaciones) +
+        "</td><td class=num>" + num(r.adjudicadas) + "</td><td class=num>" + num(r.desiertas) + "</td><td class=num>" +
+        num(r.oferentes_promedio) + "</td><td class=num>" + (r.pct_un_oferente == null ? "—" : r.pct_un_oferente + "%") +
+        "</td><td class=num>" + mm(r.monto_mediano_mm) + "</td></tr>";
+    }).join("") + "</tbody>");
+
+  // Detail tables shared by the views.
+  function tendersTable(list, opts) {
+    opts = opts || {};
+    var cap = opts.cap || 25;
+    var head = "<tr><th>Fecha</th><th>Código</th><th>Licitación</th><th>Tam.</th><th class=num>Oferentes</th>" +
+      (opts.rut ? "<th class=num>Ofertó</th><th class=num>Ganó</th><th>Resultado</th>" : "<th class=num>Adjudicado</th><th>Ganadores</th>") + "</tr>";
+    var body = list.slice(0, cap).map(function (t) {
+      var cells = "<td class=mono>" + fmtDate(tDate(t)) + "</td><td>" + link(t) + "</td><td>" +
+        esc(t.nombre) + '<div class="small">' + esc(t.organismo) + "</div></td><td>" + sizeChip(t.tamano) + "</td><td class=num>" + bidderPill(t.n_oferentes) + "</td>";
+      if (opts.rut) {
+        var o = (t.ofertas || []).filter(function (x) { return x[0] === opts.rut; })[0] || [];
+        var res = o[4] ? '<span class="pill good">Ganó</span>' : t.ganadores ? '<span class="pill crit">Perdió</span>' : statePill(t);
+        var who = !o[4] && t.ganadores ? '<div class="small">Ganó: ' + esc(t.ganadores) + "</div>" : "";
+        return '<tr class="' + (o[4] ? "won" : "") + '">' + cells + "<td class=num>" + pesosMM(o[2]) + "</td><td class=num>" + (o[4] ? pesosMM(o[3]) : "—") + "</td><td>" + res + who + "</td></tr>";
+      }
+      return "<tr>" + cells + "<td class=num>" + mm(t.monto_adjudicado_mm || null) + "</td><td>" + (t.ganadores ? esc(t.ganadores) : statePill(t)) + "</td></tr>";
+    }).join("");
+    var more = list.length > cap ? '<div class="more">y ' + (list.length - cap) + " más en la pestaña Historial.</div>" : "";
+    return list.length ? '<div class="sub-table"><table><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>" + more
+      : '<div class="more">Sin licitaciones comparables en el historial.</div>';
+  }
+  function bidsTable(t) {
+    var rows = (t.ofertas || []).slice().sort(function (a, b) { return (b[4] - a[4]) || (a[2] - b[2]); });
+    return '<div class="sub-table"><table><thead><tr><th>Proveedor</th><th>RUT</th><th class=num>Ofertó</th><th class=num>Adjudicado</th><th>Resultado</th></tr></thead><tbody>' +
+      rows.map(function (o) {
+        return '<tr class="' + (o[4] ? "won" : "") + '"><td>' + esc(o[1]) + "</td><td class=mono>" + esc(o[0]) + "</td><td class=num>" + pesosMM(o[2]) +
+          "</td><td class=num>" + (o[4] ? pesosMM(o[3]) : "—") + "</td><td>" + (o[4] ? '<span class="pill good">Ganó</span>' : t.ganadores ? "No seleccionada" : esc(t.estado)) + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+  function byDate(a, b) { return tDate(b).localeCompare(tDate(a)); }
+
+  // Views: columns are [key, label, numeric, render].
+  var VIEWS = {
+    comp: {
+      label: "Competidores",
+      hint: "Quién gana lo que tú quieres ganar. Con «Solo mi segmento» se cuentan solo las licitaciones de tus tamaños. Abre una fila para ver cada licitación en que ofertó, cuánto ofertó y si ganó.",
+      segment: true, size: false, sort: ["ganadas", -1],
+      rows: function (onlySeg) {
+        return (D.proveedores || []).map(function (p) {
+          var g = onlySeg ? p.ganadas_segmento : p.ganadas, o = onlySeg ? p.ofertadas_segmento : p.ofertadas;
+          return Object.assign({}, p, { ganadas: g, ofertadas: o, _all: p });
+        }).filter(function (p) { return !onlySeg || p.ofertadas > 0; });
+      },
+      cols: [
+        ["nombre", "Proveedor", false, function (p) {
+          return '<div class="name">' + esc(p.nombre) + '</div><div class="small mono">' + esc(p.rut) + '</div><div class="gist">' + esc(p.ejemplos) + "</div>";
+        }],
+        ["ganadas", "Ganadas", true, function (p) { return num(p.ganadas); }],
+        ["ofertadas", "Ofertadas", true, function (p) { return num(p.ofertadas); }],
+        ["tasa_exito", "Tasa", true, function (p) {
+          return p.tasa_exito == null ? "—" : p.tasa_exito + '%<span class="bar"><i style="width:' + p.tasa_exito + '%"></i></span>';
+        }],
+        ["monto_ganado_mm", "Ganado", true, function (p) { return mm(p.monto_ganado_mm); }],
+        ["monto_mediano_mm", "Mediana", true, function (p) { return mm(p.monto_mediano_mm); }],
+        ["compradores", "Le gana a", false, function (p) { return '<div class="wide">' + esc(p.compradores) + '</div><div class="small">' + esc(p.regiones) + "</div>"; }],
+        ["ultima_adjudicacion", "Última", false, function (p) { return '<span class="mono">' + fmtDate(p.ultima_adjudicacion) + "</span>"; }]
+      ],
+      text: function (p) { return [p.nombre, p.rut, p.compradores, p.regiones, p.ejemplos].join(" "); },
+      detail: function (p) {
+        var list = (byRut[p.rut] || []).slice().sort(byDate);
+        var tot = p._all;
+        return "<h3>Sus ofertas (" + list.length + ") · total " + tot.ganadas + " ganadas de " + tot.ofertadas + " · tasa " + (tot.tasa_exito == null ? "—" : tot.tasa_exito + "%") + "</h3>" +
+          tendersTable(list, { rut: p.rut, cap: 40 });
+      }
+    },
+    inc: {
+      label: "Incumbentes",
+      hint: "Compradores donde un mismo proveedor ganó dos o más licitaciones de tu rubro. Si postulas a uno de ellos, ya sabes con quién compites.",
+      segment: false, size: false, sort: ["ganadas", -1],
+      rows: function () { return D.incumbentes || []; },
+      cols: [
+        ["comprador", "Comprador", false, function (r) { return '<div class="name">' + esc(r.comprador) + '</div><div class="small">' + esc(r.unidad) + "</div>"; }],
+        ["licitaciones_adjudicadas", "Adjudicadas", true, function (r) { return num(r.licitaciones_adjudicadas); }],
+        ["incumbente", "Incumbente", false, function (r) { return '<div class="name">' + esc(r.incumbente) + '</div><div class="small mono">' + esc(r.rut) + "</div>"; }],
+        ["ganadas", "Ganó", true, function (r) { return num(r.ganadas); }],
+        ["pct", "Cuota", true, function (r) { return r.pct + '%<span class="bar"><i style="width:' + r.pct + '%"></i></span>'; }],
+        ["otros_ganadores", "Otros ganadores", false, function (r) { return '<div class="wide">' + esc(r.otros_ganadores || "—") + "</div>"; }]
+      ],
+      text: function (r) { return [r.comprador, r.unidad, r.incumbente, r.rut, r.otros_ganadores, r.ejemplos].join(" "); },
+      detail: function (r) {
+        var list = (byBuyer[r.codigo_comprador] || []).slice().sort(byDate);
+        return "<h3>Licitaciones de este comprador en tu rubro (" + list.length + ")</h3>" + tendersTable(list, { cap: 30 });
+      }
+    },
+    rank: {
+      label: "Tu ranking",
+      hint: "Cada licitación de tu ranking actual frente a lo que pasó antes con el mismo comprador o, si no hay, con los mismos códigos ONU y tamaño. Pocos oferentes y sin incumbente es buena señal.",
+      segment: false, size: true, sort: ["rank", 1],
+      rows: function () { return D.ranking || []; },
+      cols: [
+        ["rank", "#", true, function (r) { return '<span class="mono">' + r.rank + "</span>"; }],
+        ["nombre", "Licitación", false, function (r) {
+          return '<div class="name">' + esc(r.nombre) + '</div><div class="small">' + esc(r.organismo) + "</div><div class=small>" + (r.url ? link(r) : esc(r.codigo)) + "</div>";
+        }],
+        ["tamano", "Tam.", false, function (r) { return sizeChip(r.tamano); }],
+        ["base", "Comparado con", false, function (r) { return '<span class="small">' + esc(r.base) + "</span>"; }],
+        ["previas_adjudicadas", "Previas", true, function (r) { return num(r.previas_adjudicadas); }],
+        ["ganadores_previos", "Ganadores previos", false, function (r) { return '<div class="wide">' + esc(r.ganadores_previos || "—") + "</div>"; }],
+        ["oferentes_promedio", "Oferentes", true, function (r) { return r.oferentes_promedio == null ? "—" : bidderPill(r.oferentes_promedio); }],
+        ["monto_mediano_mm", "Mediana", true, function (r) { return mm(r.monto_mediano_mm); }]
+      ],
+      text: function (r) { return [r.codigo, r.nombre, r.organismo, r.ganadores_previos, r.base].join(" "); },
+      detail: function (r) {
+        var list = (r.previas_codigos || []).map(function (c) { return byCode[c]; }).filter(Boolean);
+        return "<h3>Licitaciones previas comparables (" + esc(r.base) + ")</h3>" + tendersTable(list, { cap: 12 });
+      }
+    },
+    hist: {
+      label: "Historial",
+      hint: "Todas las licitaciones pasadas de tu rubro. Abre una para ver cada oferta: quién ofertó, cuánto y quién ganó.",
+      segment: true, size: true, sort: ["fecha", -1],
+      rows: function (onlySeg) {
+        return LIC.map(function (t) { return Object.assign({ fecha: tDate(t) }, t); })
+          .filter(function (t) { return !onlySeg || MINE.has(t.tamano); });
+      },
+      cols: [
+        ["fecha", "Fecha", false, function (t) { return '<span class="mono">' + fmtDate(t.fecha) + "</span>"; }],
+        ["nombre", "Licitación", false, function (t) {
+          return '<div class="name">' + esc(t.nombre) + '</div><div class="small">' + esc(t.organismo) + " · " + esc(shortRegion(t.region)) + "</div><div class=small>" + link(t) + "</div>";
+        }],
+        ["tamano", "Tam.", false, function (t) { return sizeChip(t.tamano); }],
+        ["n_oferentes", "Oferentes", true, function (t) { return bidderPill(t.n_oferentes); }],
+        ["monto_adjudicado_mm", "Adjudicado", true, function (t) { return t.ganadores ? mm(t.monto_adjudicado_mm) : "—"; }],
+        ["ganadores", "Ganador", false, function (t) { return t.ganadores ? '<div class="wide">' + esc(t.ganadores) + "</div>" : statePill(t); }]
+      ],
+      text: function (t) {
+        return [t.codigo, t.nombre, t.organismo, t.region, t.ganadores].concat((t.ofertas || []).map(function (o) { return o[0] + " " + o[1]; })).join(" ");
+      },
+      detail: function (t) { return "<h3>Ofertas (" + (t.ofertas || []).length + ")</h3>" + bidsTable(t); }
+    }
+  };
+  var ORDER = ["comp", "inc", "rank", "hist"];
+
+  var TAB_KEY = "mp-competencia-tab";
+  var state = { view: "comp", q: "", size: "", seg: true, limit: 150, open: null, sort: {} };
+  try { var saved = localStorage.getItem(TAB_KEY); if (VIEWS[saved]) state.view = saved; } catch (e) {}
+
+  var sizes = Array.from(new Set(LIC.map(function (t) { return t.tamano; }).filter(Boolean))).sort();
+  $("size").insertAdjacentHTML("beforeend", sizes.map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + "</option>"; }).join(""));
+
+  function renderTabs() {
+    $("tabs").innerHTML = ORDER.map(function (k) {
+      var n = VIEWS[k].rows(false).length;
+      return '<button class="tab" role="tab" type="button" data-v="' + k + '" aria-selected="' + (k === state.view) + '">' +
+        esc(VIEWS[k].label) + "<small>" + num(n) + "</small></button>";
+    }).join("");
+  }
+
+  function currentRows() {
+    var v = VIEWS[state.view];
+    var rows = v.rows(v.segment && state.seg);
+    if (v.size && state.size) rows = rows.filter(function (r) { return r.tamano === state.size; });
+    if (state.q) {
+      var terms = norm(state.q).split(/\s+/).filter(Boolean);
+      rows = rows.filter(function (r) { var t = norm(v.text(r)); return terms.every(function (w) { return t.indexOf(w) >= 0; }); });
+    }
+    var s = state.sort[state.view] || v.sort, key = s[0], dir = s[1];
+    rows = rows.slice().sort(function (a, b) {
+      var x = a[key], y = b[key];
+      if (x == null || x === "") return 1;
+      if (y == null || y === "") return -1;
+      return (typeof x === "number" ? x - y : String(x).localeCompare(String(y), "es")) * dir;
+    });
+    return rows;
+  }
+
+  function render() {
+    var v = VIEWS[state.view];
+    $("hint").textContent = v.hint;
+    $("segment").hidden = !v.segment;
+    $("segment").setAttribute("aria-pressed", String(state.seg));
+    $("segment").textContent = "Solo mi segmento (" + Array.from(MINE).join("/") + ")";
+    $("sizeField").hidden = !v.size;
+    var s = state.sort[state.view] || v.sort;
+    $("head").innerHTML = v.cols.map(function (c) {
+      var sort = c[0] === s[0] ? (s[1] > 0 ? "ascending" : "descending") : "none";
+      return '<th data-k="' + c[0] + '" class="' + (c[2] ? "num" : "") + '" aria-sort="' + sort + '"><button type="button">' + esc(c[1]) + "</button></th>";
+    }).join("");
+    var rows = currentRows();
+    var shown = rows.slice(0, state.limit);
+    var html = [];
+    shown.forEach(function (r, i) {
+      var id = state.view + ":" + (r.rut || r.codigo || r.codigo_comprador) + ":" + (r.codigo_comprador || "");
+      var open = state.open === id;
+      html.push('<tr class="row' + (open ? " open" : "") + '" data-id="' + esc(id) + '" data-i="' + i + '" tabindex="0" aria-expanded="' + open + '">' +
+        v.cols.map(function (c) { return '<td class="' + (c[2] ? "num" : "") + '">' + c[3](r) + "</td>"; }).join("") + "</tr>");
+      if (open) html.push('<tr class="detail"><td colspan="' + v.cols.length + '"><div class="detail">' + v.detail(r) + "</div></td></tr>");
+    });
+    $("rows").innerHTML = html.join("");
+    $("rows")._rows = shown;
+    $("empty").hidden = rows.length > 0;
+    $("moreWrap").hidden = rows.length <= state.limit;
+    $("more").textContent = "Mostrar " + Math.min(150, rows.length - state.limit) + " más";
+    $("count").textContent = rows.length > state.limit ? num(state.limit) + " de " + num(rows.length) : num(rows.length) + (rows.length === 1 ? " fila" : " filas");
+  }
+
+  $("tabs").addEventListener("click", function (e) {
+    var b = e.target.closest(".tab");
+    if (!b) return;
+    state.view = b.dataset.v; state.limit = 150; state.open = null;
+    try { localStorage.setItem(TAB_KEY, state.view); } catch (err) {}
+    renderTabs(); render();
+  });
+  $("head").addEventListener("click", function (e) {
+    var th = e.target.closest("th");
+    if (!th) return;
+    var v = VIEWS[state.view], cur = state.sort[state.view] || v.sort, k = th.dataset.k;
+    var numeric = v.cols.some(function (c) { return c[0] === k && c[2]; });
+    state.sort[state.view] = [k, cur[0] === k ? -cur[1] : (numeric ? -1 : 1)];
+    render();
+  });
+  function toggle(tr) {
+    var id = tr.dataset.id;
+    state.open = state.open === id ? null : id;
+    render();
+    var el = document.querySelector('#rows tr.row[data-id="' + CSS.escape(id) + '"]');
+    if (el) el.focus({ preventScroll: true });
+  }
+  $("rows").addEventListener("click", function (e) {
+    if (e.target.closest("a")) return;
+    var tr = e.target.closest("tr.row");
+    if (tr) toggle(tr);
+  });
+  $("rows").addEventListener("keydown", function (e) {
+    var tr = e.target.closest("tr.row");
+    if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(tr); }
+  });
+  var timer;
+  $("q").addEventListener("input", function () {
+    clearTimeout(timer);
+    timer = setTimeout(function () { state.q = $("q").value.trim(); state.limit = 150; state.open = null; render(); }, 120);
+  });
+  $("size").addEventListener("change", function () { state.size = $("size").value; state.limit = 150; render(); });
+  $("segment").addEventListener("click", function () { state.seg = !state.seg; state.limit = 150; state.open = null; render(); });
+  $("more").addEventListener("click", function () { state.limit += 150; render(); });
+  $("reset").addEventListener("click", function () {
+    state.q = ""; state.size = ""; state.seg = true; state.limit = 150; state.open = null; state.sort = {};
+    $("q").value = ""; $("size").value = ""; render();
+  });
+
+  renderTabs();
+  render();
+})();
+</script>
+</body>
+</html>
