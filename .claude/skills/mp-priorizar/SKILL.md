@@ -18,10 +18,14 @@ python .claude/skills/mp-priorizar/scripts/rank.py --profile data/company_profil
 Outputs `data/ranking_top100.xlsx` (needs `openpyxl`), `.csv`, `.json`, `.md` and `.html`.
 `--open` opens the `.html` in Chrome when it is installed, otherwise in the default browser
 (leave it out for quick re-runs while tuning the profile if the user doesn't want a new tab each time).
+The export has no amounts, so the script reads each ranked tender's "Monto Total Estimado" from
+its page on mercadopublico.cl (about 6 s for 100 tenders) and caches it in `data/montos_cache.json`,
+so re-runs only fetch new tenders. Many buyers don't publish the amount; those show the UTM
+bracket from the tender type instead. `--sin-montos` skips the lookup (offline runs).
 The `.html` is a self-contained page built from `scripts/ranking_template.html`: open it in a
-browser to search, filter by region / size / score / days to close, and sort columns. Each row
-shows what the buyer wants; expanding it shows the job summary (full description, deliverables
-with quantities, approximate budget from the size bracket, steps to submit before the deadline).
+browser to search, filter by region / size / score / days to close, and sort columns (including
+the amount). Each row shows what the buyer wants and the estimated amount; expanding it shows the job summary (full description, deliverables
+with quantities, estimated amount and size bracket, steps to submit before the deadline).
 Rows can be starred into a shortlist (kept in the browser's local storage). The JSON also
 carries `descripcion` and `entregables` for each ranked tender.
 The console prints the counts, the reasons tenders were dropped, and the top 10.

@@ -11,11 +11,15 @@ Tenders with no keyword or category match are not ranked. Tenders that already
 closed, close before `dias_minimos_preparacion`, are private (unless
 `incluir_privadas`), or match an exclusion are dropped.
 
+The export has no amounts, so the estimated amount (Monto Total Estimado) of each ranked
+tender is read from its page on mercadopublico.cl and cached next to the data file.
+
 Usage:
     python rank.py --profile data/company_profile.json --data data/licitaciones.json \
-                   [--top 100] [--out data/ranking_top100] [--now 2026-10-21T08:00] [--open]
+                   [--top 100] [--out data/ranking_top100] [--now 2026-10-21T08:00] [--open] [--sin-montos]
 """
 import argparse
+import concurrent.futures
 import csv
 import datetime as dt
 import io
@@ -28,6 +32,7 @@ import shutil
 import subprocess
 import sys
 import unicodedata
+import urllib.request
 import webbrowser
 
 W_KEYWORDS, W_CATEGORY, W_REGION, W_SIZE, W_TIME = 45, 25, 10, 10, 10
@@ -253,7 +258,66 @@ def job_summary(t):
             "entregables_extra": max(0, len(deliverables) - MAX_DELIVERABLES)}
 
 
-OUTPUT_COLUMNS = ["rank", "puntaje", "codigo", "nombre", "organismo", "region", "tamano", "tipo",
+# Amounts published on each tender's page (the export doesn't carry them).
+AMOUNT_SPANS = {"moneda": "lblFicha1Moneda", "monto_estimado": "lblFicha7MontoEstimado",
+                "monto_base": "lblFicha7Estimacion"}
+CURRENCY_CODES = {"peso chileno": "CLP", "unidad de fomento": "UF", "dolar": "USD", "euro": "EUR",
+                  "unidad tributaria mensual": "UTM"}
+
+
+def parse_amount(s):
+    s = re.sub(r"[^\d,.]", "", s or "")
+    if "," in s:  # "15.000.000,50" -> 15000000.50
+        s = s.replace(".", "").replace(",", ".")
+    try:
+        n = float(s)
+    except ValueError:
+        return None
+    return int(n) if n.is_integer() else n
+
+
+def fetch_amount(url):
+    """Reads currency, estimated amount and its basis from a tender page. Amount is None when not public."""
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (mp-priorizar skill)"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        page = resp.read().decode("utf-8", "replace")
+    found = {}
+    for key, span in AMOUNT_SPANS.items():
+        m = re.search(r'id="' + span + r'"[^>]*>(.*?)</span>', page, re.S)
+        found[key] = re.sub(r"<[^>]+>|\s+", " ", m.group(1)).strip() if m else ""
+    currency = norm(found["moneda"])
+    found["moneda"] = next((c for name, c in CURRENCY_CODES.items() if name in currency), found["moneda"])
+    found["monto_estimado"] = parse_amount(found["monto_estimado"])
+    return found
+
+
+def add_amounts(rows, cache_path, workers=8):
+    """Adds monto_estimado / moneda / monto_base to each row, fetching only tenders not in the cache."""
+    try:
+        with open(cache_path, encoding="utf-8") as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = {}
+    todo = [r for r in rows if r["codigo"] not in cache]
+    failed = 0
+    with concurrent.futures.ThreadPoolExecutor(workers) as ex:
+        futures = {ex.submit(fetch_amount, r["url"]): r["codigo"] for r in todo}
+        for fut in concurrent.futures.as_completed(futures):
+            try:
+                cache[futures[fut]] = fut.result()
+            except Exception:  # noqa: BLE001 - a missing amount is not fatal; retried next run
+                failed += 1
+    if todo:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False, indent=1)
+    for r in rows:
+        r.update(cache.get(r["codigo"], {}))
+    return {"consultadas": len(todo) - failed, "en_cache": len(rows) - len(todo), "fallidas": failed,
+            "con_monto": sum(1 for r in rows if r.get("monto_estimado") is not None)}
+
+
+OUTPUT_COLUMNS = ["rank", "puntaje", "codigo", "nombre", "organismo", "region", "tamano",
+                  "monto_estimado", "moneda", "tipo",
                   "fecha_cierre", "dias_para_cierre", "n_items", "motivos", "p_palabras",
                   "p_categoria", "p_region", "p_tamano", "p_plazo", "url"]
 
@@ -369,6 +433,8 @@ def main():
     ap.add_argument("--out", default="data/ranking_top100", help="output path prefix (no extension)")
     ap.add_argument("--now", help="reference time, ISO format (default: current local time)")
     ap.add_argument("--open", action="store_true", help="open the HTML report in Chrome (or the default browser)")
+    ap.add_argument("--sin-montos", action="store_true",
+                    help="don't fetch estimated amounts from mercadopublico.cl (offline / quick re-runs)")
     args = ap.parse_args()
 
     with open(args.profile, encoding="utf-8") as f:
@@ -400,6 +466,10 @@ def main():
     for i, r in enumerate(top, 1):
         r["rank"] = i
         r.update(job_summary(by_code[r["codigo"]]))
+    amounts = None
+    if not args.sin_montos:
+        cache = os.path.join(os.path.dirname(os.path.abspath(args.data)), "montos_cache.json")
+        amounts = add_amounts(top, cache)
 
     meta = {"titulo": data.get("titulo", ""), "descargado": data.get("descargado", ""),
             "generado": now.replace(microsecond=0).isoformat()}
@@ -416,6 +486,7 @@ def main():
         "con_coincidencias": len(scored),
         "descartadas": dropped,
         "top": len(top),
+        **({"montos": amounts} if amounts else {}),
         "salidas": [args.out + ext for ext in ([".xlsx"] if has_xlsx else []) + [".csv", ".json", ".md", ".html"]],
         "top10": [f"{r['rank']}. [{r['puntaje']}] {r['codigo']} {r['nombre'][:70]}" for r in top[:10]],
     }, ensure_ascii=False, indent=2))

@@ -119,6 +119,8 @@ tr.row.open .gist { display: none; }
 .region { color: var(--ink-2); font-size: 13px; min-width: 120px; }
 .chip { display: inline-block; font: 500 12px/1 var(--f-mono); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--line-2); color: var(--ink-2); }
 .chip.ok { border-color: var(--good); color: var(--good); }
+.money { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+.money .na { color: var(--muted); font-weight: 400; font-size: 13px; }
 .close { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .close small { display: block; color: var(--muted); font-size: 12px; }
 .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
@@ -166,7 +168,8 @@ footer p { max-width: 70ch; margin: 0; }
   tbody tr.row td.name { grid-column: 2; grid-row: 1; }
   tbody tr.row td.starc { grid-column: 3; grid-row: 1; }
   tbody tr.row td.score { display: none; }
-  tbody tr.row td.codec, tbody tr.row td.region, tbody tr.row td.sizec, tbody tr.row td.close { grid-column: 2 / 4; }
+  tbody tr.row td.codec, tbody tr.row td.region, tbody tr.row td.sizec, tbody tr.row td.money, tbody tr.row td.close { grid-column: 2 / 4; }
+  .money { text-align: left; }
   .name { min-width: 0; }
   tr.detail { display: block; }
   tr.detail td { display: block; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; padding: 0 12px 14px; }
@@ -229,6 +232,7 @@ footer p { max-width: 70ch; margin: 0; }
         <th data-k="codigo"><button type="button">Código</button></th>
         <th data-k="region"><button type="button">Región</button></th>
         <th data-k="tamano"><button type="button">Tamaño</button></th>
+        <th data-k="monto_estimado" class="num"><button type="button">Monto</button></th>
         <th data-k="dias_para_cierre"><button type="button">Cierre</button></th>
         <th data-k="puntaje" class="num"><button type="button">Calce</button></th>
         <th><span class="visually">★</span></th>
@@ -240,7 +244,7 @@ footer p { max-width: 70ch; margin: 0; }
 </main>
 
 <footer class="wrap">
-  <p>El resumen sale de la descripción y los ítems publicados. Mandan las bases de cada licitación (en su ficha): requisitos, garantías, criterios de evaluación y presupuesto exacto.</p>
+  <p>El resumen sale de la descripción y los ítems publicados. El monto es el «Monto Total Estimado» de la ficha; cuando el comprador no lo publica se muestra el tramo en UTM según el tipo de licitación. Mandan las bases de cada licitación (en su ficha): requisitos, garantías, criterios de evaluación y presupuesto exacto.</p>
 </footer>
 
 <script type="application/json" id="data">/*__DATA__*/</script>
@@ -255,6 +259,19 @@ footer p { max-width: 70ch; margin: 0; }
     LQ: "entre 2.000 y 5.000 UTM", LR: "más de 5.000 UTM",
     LS: "servicios personales especializados (sin tramo)", OBRA: "obra pública (ver bases)"
   };
+  var BRACKET = { L1: "< 100 UTM", LE: "100–1.000 UTM", LP: "1.000–2.000 UTM", LQ: "2.000–5.000 UTM", LR: "> 5.000 UTM" };
+  function fmtMoney(n, cur) {
+    if (n == null) return "";
+    var s = n.toLocaleString("es-CL", { maximumFractionDigits: 2 });
+    return !cur || cur === "CLP" ? "$" + s : s + " " + cur;
+  }
+  function moneyCell(r) {
+    if (r.monto_estimado != null) return esc(fmtMoney(r.monto_estimado, r.moneda));
+    var fallback = BRACKET[r.tamano];
+    var note = "moneda" in r ? "Monto no publicado en la ficha" : "Monto no consultado";
+    return fallback ? '<span class="na" title="' + note + '; tramo según el tipo de licitación">' + esc(fallback) + "</span>"
+      : '<span class="na" title="' + note + '">—</span>';
+  }
   var STORE = "mp-priorizar-marcadas";
   var starred = new Set();
   try { starred = new Set(JSON.parse(localStorage.getItem(STORE) || "[]")); } catch (e) {}
@@ -344,7 +361,10 @@ footer p { max-width: 70ch; margin: 0; }
     var deadline = fmtDate(r.fecha_cierre) + (days != null ? " (" + (days < 1 ? "hoy" : Math.floor(days) === 1 ? "1 día" : Math.floor(days) + " días") + ")" : "");
     var why = (String(r.motivos || "").split(" | ").filter(function (m) { return m.indexOf("palabras: ") === 0; })[0] || "")
       .replace("palabras: ", "").replace(/ \([^)]*\)/g, "");
-    return '<tr class="detail"><td colspan="8"><div class="detail-grid">' +
+    var money = r.monto_estimado != null
+      ? "<dt>Monto estimado</dt><dd><b>" + esc(fmtMoney(r.monto_estimado, r.moneda)) + "</b>" + (r.monto_base ? " · " + esc(r.monto_base) : "") + "</dd>"
+      : ("moneda" in r ? "<dt>Monto estimado</dt><dd>no publicado en la ficha</dd>" : "");
+    return '<tr class="detail"><td colspan="9"><div class="detail-grid">' +
       '<div><h3>Qué piden</h3><p class="brief">' + esc(r.descripcion || r.nombre) + "</p>" +
       (deliv ? '<h3>Entregables</h3><ul class="deliv">' + deliv + "</ul>" : "") + "</div>" +
       '<div><h3>Qué tienes que hacer</h3><ol class="steps">' +
@@ -355,7 +375,8 @@ footer p { max-width: 70ch; margin: 0; }
       '<h3>Datos clave</h3><dl class="facts">' +
       "<dt>Comprador</dt><dd>" + esc(r.organismo) + "</dd>" +
       "<dt>Región</dt><dd>" + esc(shortRegion(r.region)) + "</dd>" +
-      "<dt>Monto aprox.</dt><dd>" + esc(BUDGET[r.tamano] || "no indicado") + "</dd>" +
+      money +
+      "<dt>Tramo</dt><dd>" + esc(BUDGET[r.tamano] || "no indicado") + "</dd>" +
       "<dt>Tipo</dt><dd>" + esc(r.tipo) + "</dd></dl>" +
       (why ? '<div class="why">Te la sugerimos porque menciona: ' + esc(why) + "</div>" : "") +
       "</div></div></td></tr>";
@@ -374,6 +395,7 @@ footer p { max-width: 70ch; margin: 0; }
         '<td class="codec"><a class="code" href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.codigo) + "</a></td>" +
         '<td class="region">' + esc(shortRegion(r.region)) + "</td>" +
         '<td class="sizec"><span class="chip' + (sizeOk ? " ok" : "") + '" title="' + esc(r.tipo) + '">' + esc(r.tamano || "?") + "</span></td>" +
+        '<td class="money num">' + moneyCell(r) + "</td>" +
         '<td class="close">' + daysPill(r.dias_para_cierre) + "<small>" + fmtDate(r.fecha_cierre) + "</small></td>" +
         '<td class="score num" title="Calce con tu perfil (0–100)">' + Math.round(r.puntaje) + "</td>" +
         '<td class="starc"><button type="button" class="star" aria-pressed="' + on + '" aria-label="Marcar ' + esc(r.codigo) + '">★</button></td>' +
@@ -416,7 +438,7 @@ footer p { max-width: 70ch; margin: 0; }
     b.addEventListener("click", function () {
       var k = b.parentElement.dataset.k;
       if (state.sortK === k) state.sortDir *= -1;
-      else { state.sortK = k; state.sortDir = (k === "puntaje") ? -1 : 1; }
+      else { state.sortK = k; state.sortDir = (k === "puntaje" || k === "monto_estimado") ? -1 : 1; }
       render();
     });
   });
