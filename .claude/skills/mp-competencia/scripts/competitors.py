@@ -361,6 +361,11 @@ def main():
     files = [str(out.with_suffix(".json")), str(out.with_suffix(".md")), str(out.with_suffix(".html"))]
     if write_xlsx(out.with_suffix(".xlsx"), res):
         files.append(str(out.with_suffix(".xlsx")))
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "mp-priorizar" / "scripts"))
+    from rank import open_in_browser
+    from reporte import build as build_master
+    master = build_master(out.parent)
+    files.append(str(master))
 
     with_history = sum(1 for r in ranking if r["previas_adjudicadas"])
     print(json.dumps({
@@ -372,9 +377,7 @@ def main():
         "salidas": files,
     }, ensure_ascii=False, indent=2))
     if a.open:
-        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "mp-priorizar" / "scripts"))
-        from rank import open_in_browser
-        print(f"HTML abierto en {open_in_browser(out.with_suffix('.html'))}")
+        print(f"HTML abierto en {open_in_browser(master)}")
 
 
 if __name__ == "__main__":

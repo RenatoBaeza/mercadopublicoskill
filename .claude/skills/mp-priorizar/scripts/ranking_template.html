@@ -130,6 +130,17 @@ tr.row.open .gist { display: none; }
 .pill.good { color: var(--good); background: var(--good-wash); }
 
 .score { font: 700 15px/1.4 var(--f-display); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.new { display: inline-block; vertical-align: 2px; margin-right: 6px; font: 700 10.5px/1 var(--f-body); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--accent); background: var(--accent-wash); border: 1px solid var(--accent); border-radius: 3px; padding: 3px 5px; }
+.extra { display: contents; }
+#toggleFilters { display: none; }
+.parts { display: grid; grid-template-columns: auto minmax(60px, 1fr) auto; gap: 5px 10px; align-items: center; font-size: 13px; margin: 0; }
+.parts dt { color: var(--ink-2); }
+.parts dd { margin: 0; }
+.parts .track { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.parts .fill { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.parts .pts { font: 500 12px var(--f-mono); color: var(--muted); text-align: right; white-space: nowrap; }
+.parts .note { grid-column: 1 / -1; color: var(--muted); font-size: 12.5px; margin: -2px 0 4px; }
 
 .star { all: unset; cursor: pointer; font-size: 18px; line-height: 1; color: var(--line-2); padding: 2px 4px; border-radius: 4px; }
 .star[aria-pressed="true"] { color: var(--star); }
@@ -148,7 +159,6 @@ tr.detail td { background: var(--accent-wash); padding: 0 10px 16px; }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 13.5px; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; }
-.why { font-size: 13px; color: var(--muted); margin-top: 12px; }
 
 .empty { padding: 40px 16px; text-align: center; color: var(--muted); }
 footer { color: var(--muted); font-size: 13px; padding-block: 0 40px; }
@@ -167,7 +177,15 @@ footer p { max-width: 70ch; margin: 0; }
   tbody tr.row td.rank { grid-column: 1; grid-row: 1; }
   tbody tr.row td.name { grid-column: 2; grid-row: 1; }
   tbody tr.row td.starc { grid-column: 3; grid-row: 1; }
-  tbody tr.row td.score { display: none; }
+  tbody tr.row td.score { grid-column: 3; grid-row: 2; text-align: center; }
+  tbody tr.row td.score::after { content: "calce"; display: block; font: 500 10px/1 var(--f-body); color: var(--muted); }
+  /* Phones: only the search box and a "Filtros" toggle stay pinned; the rest opens on demand. */
+  .filters { gap: 8px; padding-block: 10px; }
+  .field.grow { flex: 1 1 0; }
+  .field.grow label { display: none; }
+  #toggleFilters { display: inline-flex; align-items: center; gap: 6px; align-self: end; }
+  .extra { display: none; }
+  .filters.expanded .extra { display: flex; flex-wrap: wrap; gap: 10px 12px; width: 100%; align-items: end; }
   tbody tr.row td.codec, tbody tr.row td.region, tbody tr.row td.sizec, tbody tr.row td.money, tbody tr.row td.close { grid-column: 2 / 4; }
   .money { text-align: left; }
   .name { min-width: 0; }
@@ -195,6 +213,8 @@ footer p { max-width: 70ch; margin: 0; }
       <label for="q">Buscar</label>
       <input type="search" id="q" placeholder="Qué piden, organismo, código…">
     </div>
+    <button class="btn" id="toggleFilters" type="button" aria-expanded="false" aria-controls="extra">Filtros</button>
+    <div class="extra" id="extra">
     <div class="field">
       <label for="region">Región</label>
       <select id="region"><option value="">Todas</option></select>
@@ -216,9 +236,11 @@ footer p { max-width: 70ch; margin: 0; }
         <option value="30">≤ 30 días</option>
       </select>
     </div>
+    <button class="btn" id="onlyNew" type="button" aria-pressed="false" hidden>Solo nuevas</button>
     <button class="btn" id="onlyStar" type="button" aria-pressed="false">★ Solo marcadas</button>
     <button class="btn" id="copy" type="button">Copiar códigos</button>
     <button class="btn" id="reset" type="button">Limpiar filtros</button>
+    </div>
     <div class="count" id="count" aria-live="polite"></div>
   </div>
 </div>
@@ -284,7 +306,7 @@ footer p { max-width: 70ch; margin: 0; }
     });
   }
   function norm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
-  function shortRegion(r) { return String(r || "").replace(/^Región (de |del )?/, ""); }
+  function shortRegion(r) { return String(r || "").replace(/^Región (de la |de |del )?/, ""); }
   var MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
   function fmtDate(iso) {
     if (!iso) return "—";
@@ -304,6 +326,7 @@ footer p { max-width: 70ch; margin: 0; }
   if (p.empresa) { $("title").textContent = "Top " + rows.length + " licitaciones para " + p.empresa; document.title = "Ranking · " + p.empresa; }
   $("source").textContent = [meta.titulo, meta.generado ? "ranking generado " + fmtDate(meta.generado) : ""].filter(Boolean).join(" · ");
   var statItems = [[stats.total, "licitaciones evaluadas"], [stats.ranked, "con coincidencias"], [rows.length, "en este ranking"]];
+  if (stats.nuevas) statItems.push([stats.nuevas, "nuevas desde tu último ranking"]);
   if (p.regiones && p.regiones.length) statItems.push([p.regiones.join(", "), "tus regiones"]);
   if (p.tamanos && p.tamanos.length) statItems.push([p.tamanos.join(" · "), "tamaños que manejas"]);
   $("stats").innerHTML = statItems.filter(function (s) { return s[0] != null && s[0] !== ""; })
@@ -325,11 +348,14 @@ footer p { max-width: 70ch; margin: 0; }
       .concat(r.entregables.map(function (e) { return e.que; })).join(" "));
   });
 
-  var state = { q: "", region: "", size: "", minScore: 0, maxDays: "", onlyStar: false, sortK: "rank", sortDir: 1, open: null };
+  var state = { q: "", region: "", size: "", minScore: 0, maxDays: "", onlyStar: false, onlyNew: false, sortK: "rank", sortDir: 1, open: null };
+  var nNew = rows.filter(function (r) { return r.nueva; }).length;
+  if (nNew) { $("onlyNew").hidden = false; $("onlyNew").textContent = "Solo nuevas (" + nNew + ")"; }
 
   function filtered() {
     var q = norm(state.q).trim().split(/\s+/).filter(Boolean);
     var out = rows.filter(function (r) {
+      if (state.onlyNew && !r.nueva) return false;
       if (state.region && r.region !== state.region) return false;
       if (state.size && r.tamano !== state.size) return false;
       if (r.puntaje < state.minScore) return false;
@@ -359,14 +385,30 @@ footer p { max-width: 70ch; margin: 0; }
     }).join("") + (r.entregables_extra ? '<li class="more">y ' + r.entregables_extra + " ítems más en la ficha</li>" : "");
     var days = r.dias_para_cierre;
     var deadline = fmtDate(r.fecha_cierre) + (days != null ? " (" + (days < 1 ? "hoy" : Math.floor(days) === 1 ? "1 día" : Math.floor(days) + " días") + ")" : "");
-    var why = (String(r.motivos || "").split(" | ").filter(function (m) { return m.indexOf("palabras: ") === 0; })[0] || "")
-      .replace("palabras: ", "").replace(/ \([^)]*\)/g, "");
+    var motivos = String(r.motivos || "").split(" | ");
+    var pick = function (re) { return motivos.filter(function (m) { return re.test(m); })[0] || ""; };
+    var words = pick(/^palabras: /).replace("palabras: ", "").replace(/ \([^)]*\)/g, "");
+    var cat = pick(/^(ONU|cat\. )/).replace(/^ONU /, "Código ONU ").replace(/^cat\. /, "categoría ");
+    var parts = [
+      ["Palabras clave", r.p_palabras, 45, words ? "Menciona: " + words : "Ninguna de tus palabras clave"],
+      ["Rubro", r.p_categoria, 25, cat || "Sus ítems no están en tus códigos ni categorías"],
+      ["Región", r.p_region, 10, ""],
+      ["Tamaño", r.p_tamano, 10, ""],
+      ["Plazo", r.p_plazo, 10, ""]
+    ].filter(function (x) { return x[1] != null; });
+    var breakdown = parts.map(function (x) {
+      var pct = Math.max(0, Math.min(100, 100 * x[1] / x[2]));
+      return "<dt>" + x[0] + '</dt><dd class="track"><span class="fill" style="width:' + pct.toFixed(0) + '%"></span></dd>' +
+        '<dd class="pts">' + Math.round(x[1]) + " / " + x[2] + "</dd>" + (x[3] ? '<dd class="note">' + esc(x[3]) + "</dd>" : "");
+    }).join("");
     var money = r.monto_estimado != null
       ? "<dt>Monto estimado</dt><dd><b>" + esc(fmtMoney(r.monto_estimado, r.moneda)) + "</b>" + (r.monto_base ? " · " + esc(r.monto_base) : "") + "</dd>"
       : ("moneda" in r ? "<dt>Monto estimado</dt><dd>no publicado en la ficha</dd>" : "");
     return '<tr class="detail"><td colspan="9"><div class="detail-grid">' +
       '<div><h3>Qué piden</h3><p class="brief">' + esc(r.descripcion || r.nombre) + "</p>" +
-      (deliv ? '<h3>Entregables</h3><ul class="deliv">' + deliv + "</ul>" : "") + "</div>" +
+      (deliv ? '<h3>Entregables</h3><ul class="deliv">' + deliv + "</ul>" : "") +
+      (breakdown ? "<h3>Por qué calza · " + Math.round(r.puntaje) + ' / 100</h3><dl class="parts">' + breakdown + "</dl>" : "") +
+      "</div>" +
       '<div><h3>Qué tienes que hacer</h3><ol class="steps">' +
       '<li>Abre la <a href="' + esc(r.url) + '" target="_blank" rel="noopener">ficha en Mercado Público ↗</a> y descarga las bases.</li>' +
       "<li>Revisa requisitos, garantías, criterios de evaluación y el presupuesto exacto.</li>" +
@@ -378,7 +420,6 @@ footer p { max-width: 70ch; margin: 0; }
       money +
       "<dt>Tramo</dt><dd>" + esc(BUDGET[r.tamano] || "no indicado") + "</dd>" +
       "<dt>Tipo</dt><dd>" + esc(r.tipo) + "</dd></dl>" +
-      (why ? '<div class="why">Te la sugerimos porque menciona: ' + esc(why) + "</div>" : "") +
       "</div></div></td></tr>";
   }
 
@@ -390,7 +431,7 @@ footer p { max-width: 70ch; margin: 0; }
       var sizeOk = (p.tamanos || []).indexOf(r.tamano) !== -1;
       return '<tr class="row' + (isOpen ? " open" : "") + '" data-code="' + esc(r.codigo) + '" tabindex="0" aria-expanded="' + isOpen + '">' +
         '<td class="rank num">' + r.rank + "</td>" +
-        '<td class="name">' + esc(r.nombre) + '<div class="org">' + esc(r.organismo) + "</div>" +
+        '<td class="name">' + (r.nueva ? '<span class="new" title="No aparecía en tus rankings anteriores">Nueva</span>' : "") + esc(r.nombre) + '<div class="org">' + esc(r.organismo) + "</div>" +
         (gist(r) ? '<div class="gist">' + esc(gist(r)) + "</div>" : "") + "</td>" +
         '<td class="codec"><a class="code" href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.codigo) + "</a></td>" +
         '<td class="region">' + esc(shortRegion(r.region)) + "</td>" +
@@ -405,6 +446,8 @@ footer p { max-width: 70ch; margin: 0; }
     $("empty").hidden = list.length > 0;
     var n = starred.size;
     $("count").textContent = list.length + " de " + rows.length + " licitaciones" + (n ? " · " + n + " marcadas" : "");
+    var active = [state.region, state.size, state.maxDays, state.minScore > 0, state.onlyStar, state.onlyNew].filter(Boolean).length;
+    $("toggleFilters").textContent = active ? "Filtros (" + active + ")" : "Filtros";
     document.querySelectorAll("thead th[data-k]").forEach(function (th) {
       th.setAttribute("aria-sort", th.dataset.k === state.sortK ? (state.sortDir > 0 ? "ascending" : "descending") : "none");
     });
@@ -420,11 +463,25 @@ footer p { max-width: 70ch; margin: 0; }
   $("onlyStar").addEventListener("click", function (e) {
     state.onlyStar = !state.onlyStar; e.currentTarget.setAttribute("aria-pressed", state.onlyStar); render();
   });
+  $("onlyNew").addEventListener("click", function (e) {
+    state.onlyNew = !state.onlyNew; e.currentTarget.setAttribute("aria-pressed", state.onlyNew); render();
+  });
+  $("toggleFilters").addEventListener("click", function (e) {
+    var open = $("extra").parentElement.classList.toggle("expanded");
+    e.currentTarget.setAttribute("aria-expanded", open);
+  });
   $("reset").addEventListener("click", function () {
-    Object.assign(state, { q: "", region: "", size: "", minScore: 0, maxDays: "", onlyStar: false, sortK: "rank", sortDir: 1 });
+    Object.assign(state, { q: "", region: "", size: "", minScore: 0, maxDays: "", onlyStar: false, onlyNew: false, sortK: "rank", sortDir: 1 });
     $("q").value = ""; $("region").value = ""; $("size").value = ""; $("maxDays").value = "";
     $("minScore").value = 0; $("minScoreOut").textContent = "0"; $("onlyStar").setAttribute("aria-pressed", "false");
+    $("onlyNew").setAttribute("aria-pressed", "false");
     render();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape" || !state.open) return;
+    var code = state.open; state.open = null; render();
+    var tr = document.querySelector('tr.row[data-code="' + CSS.escape(code) + '"]');
+    if (tr) tr.focus({ preventScroll: true });
   });
   $("copy").addEventListener("click", function (e) {
     var btn = e.currentTarget, list = filtered();

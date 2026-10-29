@@ -41,8 +41,9 @@ Amounts are converted to CLP at approximate rates. Some amounts are labelled UF 
 figures are pesos; a conversion that lands beyond 50× the size bracket's ceiling (CLP 20.000 MM for
 LR or unknown sizes) keeps the raw figure.
 
-`competitors.py` writes `data/competencia.{json,md,xlsx,html}` (`--open` opens the `.html` in Chrome,
-otherwise in the default browser). The `.html` is a self-contained page built from
+`competitors.py` writes `data/competencia.{json,md,xlsx,html}`. Both scripts also rebuild
+`data/reporte.html`, the master page with a tab per report (ranking, competencia, adjudicaciones
+pasadas), and `--open` opens that page in Chrome, otherwise in the default browser. The `.html` is a self-contained page built from
 `scripts/competencia_template.html` with tabs for Competidores, Incumbentes, Tu ranking and Historial:
 search, size filter, a "solo mi segmento" toggle and sortable columns. Expanding a competitor lists
 every tender it bid on, what it offered and whether it won; expanding a past tender lists every bid.

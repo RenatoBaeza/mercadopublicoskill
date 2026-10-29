@@ -11,6 +11,9 @@ Claude Code skills that help an entrepreneur find Chilean public tenders
 | `/mp-priorizar` | Scores every tender against your profile (0–100) and writes the top 100 to `data/ranking_top100.{xlsx,csv,json,md,html}` |
 | `/mp-competencia` | Downloads 12 months of past tenders with every bid and award (ChileCompra open data) and reports competitors, incumbents and past winners for your ranked tenders in `data/competencia.{json,md,xlsx,html}`, and ranks past awarded tenders with the same scoring, with who won them, in `data/historico_ranking.{json,csv,xlsx,html}` |
 
+Every `.html` report is also bundled into `data/reporte.html`, one page with a tab per report,
+rebuilt each time a report is generated (or on demand with `python .claude/skills/mp-priorizar/scripts/reporte.py --open`).
+
 Requirements: Python 3.9+; `openpyxl` for the Excel ranking output (`pip install openpyxl`).
 
 Scripts can also be run directly:

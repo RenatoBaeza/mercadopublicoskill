@@ -23,6 +23,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "mp-priorizar" / "scripts"))
 from rank import Ranker, job_summary, open_in_browser  # noqa: E402
+from reporte import build as build_master  # noqa: E402
 
 COLUMNS = ["rank", "fecha_adjudicacion", "puntaje", "codigo", "nombre", "organismo", "region", "tamano",
            "monto_estimado", "monto_adjudicado", "ganadores", "n_oferentes", "ofertaste",
@@ -152,6 +153,8 @@ def main():
     files = [str(out.with_suffix(e)) for e in (".json", ".csv", ".html")]
     if write_xlsx(out.with_suffix(".xlsx"), rows):
         files.append(str(out.with_suffix(".xlsx")))
+    master = build_master(out.parent)
+    files.append(str(master))
 
     top = sorted(rows, key=lambda r: -r["puntaje"])[:10]
     print(json.dumps({
@@ -163,7 +166,7 @@ def main():
                         for r in top],
     }, ensure_ascii=False, indent=2))
     if a.open:
-        opened = open_in_browser(out.with_suffix(".html"))
+        opened = open_in_browser(master)
         print(f"HTML abierto en {opened}" if opened else "No se pudo abrir el HTML en un navegador")
 
 

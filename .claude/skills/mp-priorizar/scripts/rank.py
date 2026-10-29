@@ -35,6 +35,8 @@ import unicodedata
 import urllib.request
 import webbrowser
 
+from reporte import build as build_master
+
 W_KEYWORDS, W_CATEGORY, W_REGION, W_SIZE, W_TIME = 45, 25, 10, 10, 10
 FIELD_WEIGHTS = {"nombre": 3.0, "items": 2.0, "categorias": 1.5, "descripcion": 1.0}
 FIELD_LABELS = {"nombre": "título", "items": "ítems", "categorias": "categoría", "descripcion": "descripción"}
@@ -225,14 +227,25 @@ class Ranker:
 
 BOILERPLATE = re.compile(r"^(de acuerdo|segun|según|conforme|ver|indicad|establecid|detallad|las? (bases|especificaciones))", re.I)
 MAX_DELIVERABLES = 30
+SHORT_WORDS = STOPWORDS | {"y", "n", "s", "se", "nº", "n°"}
+ACRONYMS = {"ti", "tic", "ia", "bi", "erp", "crm", "api", "gps", "qr", "pc", "sap", "sig", "sii", "mop", "pdi",
+            "sag", "onu", "uf", "utm", "iva", "rut", "oirs", "cesfam", "minsal", "serviu", "sence", "junaeb",
+            "junji", "conaf", "corfo", "indap", "sernac", "segpres", "ine", "ist", "iso", "ue", "i", "ii", "iii"}
 
 
 def readable(text):
     # Many tenders are typed in ALL CAPS; sentence-case them so the summary reads normally.
+    # Acronyms survive: known ones (TI, SII, MOP) and words with no vowels (DGMN, RRHH, 3D).
     text = re.sub(r"\s+", " ", str(text or "")).strip()
     letters = [c for c in text if c.isalpha()]
     if letters and sum(c.isupper() for c in letters) / len(letters) > 0.6:
-        text = text.lower()
+        def word(m):
+            w = m.group(0)
+            low = w.lower()
+            if low in ACRONYMS or (low not in SHORT_WORDS and not re.search(r"[aeiouáéíóú]", low)):
+                return w
+            return low
+        text = re.sub(r"[^\W\d_]+", word, text)
         text = re.sub(r"(^|[.!?]\s+)([a-záéíóúñ])", lambda m: m.group(1) + m.group(2).upper(), text)
     return text
 
@@ -253,7 +266,7 @@ def job_summary(t):
         if isinstance(qty, (int, float)) and (qty != 1 or unit.lower() not in ("unidad", "")):
             amount = f"{qty:g} {unit}".strip()
         deliverables.append({"que": what, "cantidad": amount})
-    return {"descripcion": readable(t.get("descripcion")),
+    return {"nombre": readable(t.get("nombre")), "descripcion": readable(t.get("descripcion")),
             "entregables": deliverables[:MAX_DELIVERABLES],
             "entregables_extra": max(0, len(deliverables) - MAX_DELIVERABLES)}
 
@@ -316,7 +329,26 @@ def add_amounts(rows, cache_path, workers=8):
             "con_monto": sum(1 for r in rows if r.get("monto_estimado") is not None)}
 
 
-OUTPUT_COLUMNS = ["rank", "puntaje", "codigo", "nombre", "organismo", "region", "tamano",
+def mark_new(rows, seen_path, day):
+    """Flags rows the user hasn't been shown in an earlier ranking (`nueva`), keyed by data download day.
+
+    Every ranked code is remembered with the day it first appeared, so re-running on the same day
+    (e.g. while tuning the profile) keeps today's flags. On the very first run nothing is flagged."""
+    try:
+        with open(seen_path, encoding="utf-8") as f:
+            seen = json.load(f)
+    except (OSError, ValueError):
+        seen = {}
+    first_run = not seen
+    for r in rows:
+        seen.setdefault(r["codigo"], day)
+        r["nueva"] = not first_run and seen[r["codigo"]] == day
+    with open(seen_path, "w", encoding="utf-8") as f:
+        json.dump(seen, f, ensure_ascii=False, indent=0)
+    return sum(r["nueva"] for r in rows)
+
+
+OUTPUT_COLUMNS = ["rank", "puntaje", "nueva", "codigo", "nombre", "organismo", "region", "tamano",
                   "monto_estimado", "moneda", "tipo",
                   "fecha_cierre", "dias_para_cierre", "n_items", "motivos", "p_palabras",
                   "p_categoria", "p_region", "p_tamano", "p_plazo", "url"]
@@ -470,16 +502,19 @@ def main():
     if not args.sin_montos:
         cache = os.path.join(os.path.dirname(os.path.abspath(args.data)), "montos_cache.json")
         amounts = add_amounts(top, cache)
+    seen = os.path.join(os.path.dirname(os.path.abspath(args.data)), "vistas.json")
+    n_new = mark_new(top, seen, (data.get("descargado") or now.isoformat())[:10])
 
     meta = {"titulo": data.get("titulo", ""), "descargado": data.get("descargado", ""),
             "generado": now.replace(microsecond=0).isoformat()}
-    stats = {"total": len(tenders), "ranked": len(scored), "dropped": dropped}
+    stats = {"total": len(tenders), "ranked": len(scored), "dropped": dropped, "nuevas": n_new}
     write_csv(args.out + ".csv", top)
     with open(args.out + ".json", "w", encoding="utf-8") as f:
         json.dump({"meta": meta, "stats": stats, "ranking": top}, f, ensure_ascii=False, indent=1)
     write_md(args.out + ".md", top, profile, meta, stats)
     write_html(args.out + ".html", top, profile, meta, stats)
     has_xlsx = write_xlsx(args.out + ".xlsx", top, profile, meta)
+    master = build_master(os.path.dirname(os.path.abspath(args.out)))
 
     print(json.dumps({
         "evaluadas": len(tenders),
@@ -487,11 +522,16 @@ def main():
         "descartadas": dropped,
         "top": len(top),
         **({"montos": amounts} if amounts else {}),
-        "salidas": [args.out + ext for ext in ([".xlsx"] if has_xlsx else []) + [".csv", ".json", ".md", ".html"]],
+        "salidas": [args.out + ext for ext in ([".xlsx"] if has_xlsx else []) + [".csv", ".json", ".md", ".html"]]
+                   + [str(master)],
         "top10": [f"{r['rank']}. [{r['puntaje']}] {r['codigo']} {r['nombre'][:70]}" for r in top[:10]],
+        "nuevas": n_new,
+        "nuevas_top10": [f"{r['rank']}. [{r['puntaje']}] {r['codigo']} {r['nombre'][:70]}"
+                         for r in top if r["nueva"]][:10],
+        "cierran_en_7_dias": sum(1 for r in top if r["dias_para_cierre"] is not None and r["dias_para_cierre"] <= 7),
     }, ensure_ascii=False, indent=2))
     if args.open:
-        opened = open_in_browser(args.out + ".html")
+        opened = open_in_browser(master)
         print(f"HTML abierto en {opened}" if opened else "No se pudo abrir el HTML en un navegador")
 
 
