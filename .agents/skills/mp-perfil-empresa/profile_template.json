@@ -1,0 +1,21 @@
+{
+  "empresa": "Mi Empresa SpA",
+  "rut": "",
+  "descripcion": "Servicios de aseo industrial y de oficinas, sanitización y control de plagas.",
+  "tipo_oferta": "servicios",
+  "experiencia_estado": "alguna",
+  "registro_proveedores": true,
+  "puede_emitir_garantias": true,
+  "palabras_clave": ["aseo", "limpieza", "sanitización", "desratización", "control de plagas"],
+  "palabras_clave_secundarias": ["áreas verdes", "jardinería", "higiene"],
+  "codigos_onu": ["7611", "7210"],
+  "categorias": ["Servicios de limpieza de edificios y oficinas en general", "Control de plagas"],
+  "excluir_palabras": ["heridas", "quirúrgico", "medicamento"],
+  "excluir_organismos": [],
+  "regiones": ["Metropolitana", "Valparaíso", "O'Higgins"],
+  "solo_mis_regiones": false,
+  "tamanos": ["L1", "LE", "LP"],
+  "solo_mis_tamanos": false,
+  "dias_minimos_preparacion": 5,
+  "incluir_privadas": false
+}
